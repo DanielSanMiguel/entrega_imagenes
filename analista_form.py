@@ -32,33 +32,44 @@ airtable = Airtable(AIRTABLE_BASE_ID, 'analista', AIRTABLE_API_KEY)
 SCOPES_GMAIL = ['https://www.googleapis.com/auth/gmail.send']
 SCOPES_DRIVE = ['https://www.googleapis.com/auth/drive']
 
-def autenticar_gmail():
-    """Autentica y devuelve el servicio de la API de Gmail usando st.secrets."""
+def get_creds(scopes):
+    """
+    Gestiona la autenticación de Google utilizando un token de refresco
+    guardado en st.secrets, para evitar el flujo de servidor local.
+    """
     creds = None
     try:
-        flow = InstalledAppFlow.from_client_config(
-            st.secrets["google_credentials"], SCOPES_GMAIL)
-        creds = flow.run_local_server(port=0)
+        # Intenta cargar credenciales desde st.secrets
+        creds_info = st.secrets.get("google_creds")
+        if creds_info and "token" in creds_info and "refresh_token" in creds_info:
+            creds = Credentials.from_authorized_user_info(info=creds_info, scopes=scopes)
+
+            # Si el token ha expirado, refresca
+            if creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+        else:
+            st.error("No se encontraron credenciales válidas en st.secrets.")
+            st.info("Por favor, sigue los pasos de la conclusión para generar un token y guardarlo.")
+            st.stop()
     except Exception as e:
-        st.error(f"Error de autenticación con Gmail: {e}")
+        st.error(f"Error al cargar las credenciales: {e}")
         st.stop()
     
-    service = build('gmail', 'v1', credentials=creds)
-    return service
+    return creds
+
+def autenticar_gmail():
+    """Autentica y devuelve el servicio de la API de Gmail."""
+    creds = get_creds(SCOPES_GMAIL)
+    if creds:
+        return build('gmail', 'v1', credentials=creds)
+    return None
 
 def autenticar_drive():
-    """Autentica y devuelve el servicio de la API de Google Drive usando st.secrets."""
-    creds = None
-    try:
-        flow = InstalledAppFlow.from_client_config(
-            st.secrets["google_credentials"], SCOPES_DRIVE)
-        creds = flow.run_local_server(port=0)
-    except Exception as e:
-        st.error(f"Error de autenticación con Drive: {e}")
-        st.stop()
-
-    service = build('drive', 'v3', credentials=creds)
-    return service
+    """Autentica y devuelve el servicio de la API de Google Drive."""
+    creds = get_creds(SCOPES_DRIVE)
+    if creds:
+        return build('drive', 'v3', credentials=creds)
+    return None
 
 def crear_mensaje(remitente, destinatario, asunto, cuerpo_html, adjuntos=None):
     """Crea y devuelve un mensaje de correo electrónico con adjuntos."""
@@ -123,6 +134,9 @@ def generar_pdf_certificado(nombre_archivo, nombre_completo, codigo_confirmacion
 def envia_mail(mail_value, nombre_completo, codigo, files_dict, nombre_analista):
     try:
         service_gmail = autenticar_gmail()
+        if not service_gmail:
+            return False
+            
         remitente = 'me'  # La cuenta que estás autentando
         asunto = 'Confirmación de entrega de imágenes'
         
@@ -165,6 +179,9 @@ def crear_pdf(selected_row):
 # --- Función subir_a_drive (INTEGRADA) ---
 def subir_a_drive(file_path, folder_id):
     servicio_drive = autenticar_drive()
+    if not servicio_drive:
+        return False
+
     file_metadata = {'name': os.path.basename(file_path), 'parents': [folder_id]}
     media = MediaFileUpload(file_path, mimetype='application/pdf')
     try:
@@ -291,6 +308,7 @@ else:
 st.subheader("Archivos en la carpeta de Google Drive")
 if st.button("Listar archivos de la carpeta de Drive"):
     listar_archivos_en_drive("1yNFgOvRclge1SY9QtvnD980f3-4In_hs")
+
 
 
 
