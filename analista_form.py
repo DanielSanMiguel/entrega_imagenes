@@ -147,25 +147,112 @@ def envia_mail(mail_value, nombre_completo, codigo, files_dict, nombre_analista)
         st.error(f"No se pudo enviar el correo: {e}")
         return False
 
-# --- UI DE STREAMLIT ---
-st.title('Herramienta de Análisis')
+# ---------- STREAMLIT ----------
+st.set_page_config(page_title="Dashboard de Entregas", page_icon="✅", layout="wide")
+st.title("✅ Dashboard de Confirmaciones de Entrega")
 
-nombre_analista = st.text_input("Nombre completo del analista:")
-nombre_completo = st.text_input("Nombre completo del cliente:")
-mail_value = st.text_input("Email del cliente:")
+@st.cache_data(ttl=600)
+def conectar_a_airtable():
+    at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
+    result_at_Table1 = at_Table1.get('vuelos_programados_dia', view='Grid view')
+    airtable_rows = [r['fields'] for r in result_at_Table1['records']]
+    df = pd.DataFrame(airtable_rows)
+    return df
 
-uploaded_files = st.file_uploader("Sube imágenes del cliente", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
+tabla_entregas = conectar_a_airtable()
 
-if st.button("Enviar"):
-    if not nombre_analista or not nombre_completo or not mail_value or not uploaded_files:
-        st.error("Por favor, completa todos los campos y sube al menos un archivo.")
+# --- Mostrar pantalla de introducción de código si ya se actualizó ---
+if st.session_state.get("registro_actualizado"):
+    st.subheader("Introduce el código enviado al analista")
+    codigo_ingresado = st.text_input("Código")
+    if codigo_ingresado:
+        st.success(f"Código ingresado: {codigo_ingresado}")
+    st.stop()
+
+# --- Pantalla principal ---
+if not tabla_entregas.empty:
+    partidos = tabla_entregas['ID-partido'].unique().tolist()
+    opcion_seleccionada = st.selectbox('Selecciona un ID de partido', options=partidos)
+    df_filtrado = tabla_entregas[tabla_entregas['ID-partido'] == opcion_seleccionada]
+
+    if not df_filtrado.empty:
+        selected_row = df_filtrado.iloc[0]
+        with st.form("update_form"):
+            analista_value = selected_row.get('Analista', '')
+            sin_analista = False
+            if pd.isna(analista_value) or not analista_value:
+                sin_analista = True
+                analista_value = st.text_input("Analista (Manual)", value="", placeholder="Analista")
+            else:
+                st.text_input("Analista (Airtable)", value=analista_value, disabled=True)
+
+            st.text_input("Piloto", value=selected_row.get('Piloto', 'N/A'), disabled=True)
+            st.text_input("Fecha Partido", value=selected_row.get('Fecha partido', 'N/A'), disabled=True)
+
+            mail_value = selected_row.get('Mail', '')
+            sin_mail = False
+            if pd.isna(mail_value) or not mail_value:
+                sin_mail = True
+                mail_value = st.text_input("Mail (Manual)", value="", placeholder="Introduce el correo...")
+            else:
+                st.text_input("Mail (Airtable)", value=mail_value, disabled=True)
+
+            verificado = st.checkbox("Marcar como Verificado")
+            submitted = st.form_submit_button("Actualizar Registro")
+
+        if submitted:
+            if verificado:
+                random_code = random.randint(100000, 999999)
+
+                # Crear PDF y subir
+                pdf_file_path = crear_pdf(selected_row)
+                drive_folder_id = "1yNFgOvRclge1SY9QtvnD980f3-4In_hs"
+                if subir_a_drive(pdf_file_path, drive_folder_id):
+                    os.remove(pdf_file_path)
+
+                # Actualizar Airtable
+                at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
+                record_id = selected_row.get('Rec')
+                if record_id:
+                    if sin_analista and sin_mail:
+                        fields_to_update = {'Verificado': 'Pendiente', 'Analista': analista_value, 'Mail': mail_value}
+                    elif sin_mail:
+                        fields_to_update = {'Verificado': 'Pendiente', 'Mail': mail_value}
+                    else:
+                        fields_to_update = {'Verificado': 'Pendiente'}
+
+                    at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
+
+                    # Debug info
+                    st.write("DEBUG → Enviando correo a:", mail_value)
+                    st.write("DEBUG → Código generado:", random_code)
+
+                    # Validar correo
+                    if not mail_value or pd.isna(mail_value):
+                        st.error("No hay correo válido para enviar el código.")
+                    else:
+                        try:
+                            envia_mail(mail_value, random_code)
+                            st.success(f"Correo enviado a {mail_value}")
+
+                            # Guardar estado
+                            st.session_state["registro_actualizado"] = True
+                            st.session_state["codigo_generado"] = random_code
+
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"No se pudo enviar el correo: {e}")
+                else:
+                    st.error("No se pudo obtener el ID del registro.")
+            else:
+                st.warning("Debes marcar 'Marcar como Verificado'.")
     else:
-        # Lógica para procesar los archivos, subir a Drive, registrar en Airtable, etc.
-        # ...
-        
-        # Generar código de confirmación
-        codigo = f'CONF-{datetime.now().strftime("%Y%m%d%H%M%S")}'
-        
-        # Enviar correo
-        if envia_mail(mail_value, nombre_completo, codigo, {}, nombre_analista):
-            st.success("Proceso completado. El correo de confirmación ha sido enviado.")
+        st.warning("No se encontraron registros para el partido seleccionado.")
+else:
+    st.warning("No se encontraron datos en la tabla.")
+
+# --- Archivos en Drive ---
+st.subheader("Archivos en la carpeta de Google Drive")
+if st.button("Listar archivos de la carpeta de Drive"):
+    listar_archivos_en_drive("1yNFgOvRclge1SY9QtvnD980f3-4In_hs")
+
