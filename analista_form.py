@@ -6,12 +6,14 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 import base64
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.audio import MIMEAudio
 from email.mime.base import MIMEBase
+from email import encoders
 import mimetypes
 from io import BytesIO
 import random
@@ -34,7 +36,6 @@ def autenticar_gmail():
     """Autentica y devuelve el servicio de la API de Gmail usando st.secrets."""
     creds = None
     try:
-        # Usar el flujo de aplicación web con secrets de Streamlit
         flow = InstalledAppFlow.from_client_config(
             st.secrets["google_credentials"], SCOPES_GMAIL)
         creds = flow.run_local_server(port=0)
@@ -49,7 +50,6 @@ def autenticar_drive():
     """Autentica y devuelve el servicio de la API de Google Drive usando st.secrets."""
     creds = None
     try:
-        # Usar el flujo de aplicación web con secrets de Streamlit
         flow = InstalledAppFlow.from_client_config(
             st.secrets["google_credentials"], SCOPES_DRIVE)
         creds = flow.run_local_server(port=0)
@@ -123,7 +123,7 @@ def generar_pdf_certificado(nombre_archivo, nombre_completo, codigo_confirmacion
 def envia_mail(mail_value, nombre_completo, codigo, files_dict, nombre_analista):
     try:
         service_gmail = autenticar_gmail()
-        remitente = 'me'  # La cuenta que estás autenticando
+        remitente = 'me'  # La cuenta que estás autentando
         asunto = 'Confirmación de entrega de imágenes'
         
         cuerpo = f"""
@@ -147,6 +147,42 @@ def envia_mail(mail_value, nombre_completo, codigo, files_dict, nombre_analista)
     except Exception as e:
         st.error(f"No se pudo enviar el correo: {e}")
         return False
+
+# --- Función para crear el PDF (NUEVA) ---
+def crear_pdf(selected_row):
+    file_path = f"reporte_{selected_row.get('ID-partido', 'sin_id')}.pdf"
+    c = canvas.Canvas(file_path, pagesize=letter)
+    c.drawString(100, 750, "Reporte de Confirmación de Entrega")
+    c.drawString(100, 730, "-" * 50)
+    y_position = 710
+    for key, value in selected_row.items():
+        if key != 'Rec':
+            c.drawString(100, y_position, f"{key}: {value}")
+            y_position -= 20
+    c.save()
+    return file_path
+
+# --- Función subir_a_drive (INTEGRADA) ---
+def subir_a_drive(file_path, folder_id):
+    servicio_drive = autenticar_drive()
+    file_metadata = {'name': os.path.basename(file_path), 'parents': [folder_id]}
+    media = MediaFileUpload(file_path, mimetype='application/pdf')
+    try:
+        archivo = servicio_drive.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        st.success(f"Archivo subido a Google Drive. ID: {archivo.get('id')}")
+        return True
+    except Exception as e:
+        st.error(f"Error al subir el archivo a Google Drive: {e}")
+        return False
+
+def listar_archivos_en_drive(folder_id):
+    """
+    Función placeholder para listar archivos de Drive.
+    Deberás implementar la lógica aquí.
+    """
+    st.info("La función 'listar_archivos_en_drive' no está implementada.")
+    return None
+    
 
 # ---------- STREAMLIT ----------
 st.set_page_config(page_title="Dashboard de Entregas", page_icon="✅", layout="wide")
@@ -204,12 +240,16 @@ if not tabla_entregas.empty:
         if submitted:
             if verificado:
                 random_code = random.randint(100000, 999999)
-
-                # Crear PDF y subir
+                
+                # Llamada a la función crear_pdf
                 pdf_file_path = crear_pdf(selected_row)
                 drive_folder_id = "1yNFgOvRclge1SY9QtvnD980f3-4In_hs"
-                if subir_a_drive(pdf_file_path, drive_folder_id):
-                    os.remove(pdf_file_path)
+                
+                # Subir a Drive solo si el PDF se ha creado con éxito
+                if pdf_file_path and subir_a_drive(pdf_file_path, drive_folder_id):
+                    # Solo eliminar el archivo local si se subió correctamente
+                    if os.path.exists(pdf_file_path):
+                        os.remove(pdf_file_path)
 
                 # Actualizar Airtable
                 at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
@@ -224,23 +264,18 @@ if not tabla_entregas.empty:
 
                     at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
 
-                    # Debug info
                     st.write("DEBUG → Enviando correo a:", mail_value)
                     st.write("DEBUG → Código generado:", random_code)
 
-                    # Validar correo
                     if not mail_value or pd.isna(mail_value):
                         st.error("No hay correo válido para enviar el código.")
                     else:
                         try:
-                            envia_mail(mail_value, random_code)
-                            st.success(f"Correo enviado a {mail_value}")
-
-                            # Guardar estado
-                            st.session_state["registro_actualizado"] = True
-                            st.session_state["codigo_generado"] = random_code
-
-                            st.rerun()
+                            if envia_mail(mail_value, selected_row.get('Nombre_Completo', ''), str(random_code), {}, analista_value):
+                                st.success(f"Correo enviado a {mail_value}")
+                                st.session_state["registro_actualizado"] = True
+                                st.session_state["codigo_generado"] = random_code
+                                st.rerun()
                         except Exception as e:
                             st.error(f"No se pudo enviar el correo: {e}")
                 else:
@@ -256,5 +291,6 @@ else:
 st.subheader("Archivos en la carpeta de Google Drive")
 if st.button("Listar archivos de la carpeta de Drive"):
     listar_archivos_en_drive("1yNFgOvRclge1SY9QtvnD980f3-4In_hs")
+
 
 
