@@ -32,7 +32,7 @@ if "authenticated" not in st.session_state:
 # Para este ejemplo, usamos una contraseña simple. En un entorno real,
 # usarías st.secrets para almacenar esto de forma segura.
 # Por ejemplo: PASSWORD = st.secrets["password"]
-PASSWORD = st.secrets["PASSWORD"]
+PASSWORD = "micontrasena"
 
 if not st.session_state["authenticated"]:
     st.subheader("Acceso Restringido")
@@ -286,6 +286,10 @@ if st.session_state.get("registro_actualizado"):
                             }
                             at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
                             st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
+                            
+                            # LIMPIAR EL CACHÉ DE AIRTABLE
+                            conectar_a_airtable.clear()
+                            
                         else:
                             st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
                             
@@ -383,4 +387,6 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
+
 
