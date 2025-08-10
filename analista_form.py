@@ -178,7 +178,7 @@ def crear_pdf(selected_row):
 
 # --- Función para subir el PDF a Drive (modificada) ---
 def subir_a_drive(file_path, folder_id):
-    """Sube un archivo a Google Drive y devuelve su enlace de descarga."""
+    """Sube un archivo a Google Drive, lo hace público y devuelve su enlace de visualización."""
     servicio_drive = autenticar_drive()
     if not servicio_drive:
         return None
@@ -186,11 +186,20 @@ def subir_a_drive(file_path, folder_id):
     file_metadata = {'name': os.path.basename(file_path), 'parents': [folder_id]}
     media = MediaFileUpload(file_path, mimetype='application/pdf')
     try:
-        archivo = servicio_drive.files().create(body=file_metadata, media_body=media, fields='id, webContentLink').execute()
+        archivo = servicio_drive.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
         st.success(f"Archivo subido a Google Drive. ID: {archivo.get('id')}")
-        return archivo.get('webContentLink') # Retorna el enlace de descarga directa
+
+        # Hacer el archivo público para que Airtable pueda acceder
+        servicio_drive.permissions().create(
+            fileId=archivo.get('id'),
+            body={'type': 'anyone', 'role': 'reader'},
+            fields='id'
+        ).execute()
+
+        # Devolver webViewLink para la columna de Airtable
+        return archivo.get('webViewLink')
     except Exception as e:
-        st.error(f"Error al subir el archivo a Google Drive: {e}")
+        st.error(f"Error al subir o compartir el archivo: {e}")
         return None
 
 def listar_archivos_en_drive(folder_id):
@@ -348,6 +357,8 @@ else:
 st.subheader("Archivos en la carpeta de Google Drive")
 if st.button("Listar archivos de la carpeta de Drive"):
     listar_archivos_en_drive(DRIVE_FOLDER_ID)
+
+
 
 
 
