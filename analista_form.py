@@ -29,9 +29,6 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
 # La contraseña se guarda en un secreto para mayor seguridad.
-# Para este ejemplo, usamos una contraseña simple. En un entorno real,
-# usarías st.secrets para almacenar esto de forma segura.
-# Por ejemplo: PASSWORD = st.secrets["password"]
 PASSWORD = st.secrets["PASSWORD"]
 
 if not st.session_state["authenticated"]:
@@ -378,6 +375,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
