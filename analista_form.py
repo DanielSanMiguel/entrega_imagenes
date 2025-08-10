@@ -387,7 +387,7 @@ if not tabla_entregas.empty:
                 sin_analista = True
                 analista_value_input = st.text_input("Analista (Manual)", value="", placeholder="Analista")
             else:
-                st.text_input("Analista (Airtable)", value=analista_value, disabled=True)
+                st.text_input("Analista (Airtable)", value=analista_value, disabled=False)
                 analista_value_input = analista_value # Usar el valor de Airtable si existe
 
             st.text_input("Piloto", value=selected_row.get('Piloto', 'N/A'), disabled=True)
@@ -399,7 +399,7 @@ if not tabla_entregas.empty:
                 sin_mail = True
                 mail_value_input = st.text_input("Mail (Manual)", value="", placeholder="Introduce el correo...")
             else:
-                st.text_input("Mail (Airtable)", value=mail_value, disabled=True)
+                st.text_input("Mail (Airtable)", value=mail_value, disabled=False)
                 mail_value_input = mail_value # Usar el valor de Airtable si existe
 
             verificado = st.checkbox("Marcar como Verificado")
@@ -447,3 +447,4 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
