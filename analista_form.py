@@ -421,7 +421,9 @@ if not tabla_entregas.empty:
                     if record_id:
                         fields_to_update = {}
                         if sin_analista:
-                             fields_to_update['Analista'] = analista_value_input
+                            fields_to_update['Analista'] = analista_value_input
+                        elif analista_value != analista_value_input:
+                            fields_to_update['Analista'] = analista_value_input
                         if sin_mail:
                             fields_to_update['Mail'] = mail_value_input
                         
@@ -449,6 +451,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
