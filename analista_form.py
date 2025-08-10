@@ -173,10 +173,12 @@ def envia_mail(mail_value, nombre_completo, codigo, nombre_analista, adjuntos=No
         return False
 
 # --- IMPROVED PDF CREATION FUNCTION USING HTML TEMPLATE ---
-def crear_pdf_con_template(selected_row, anlista_value):
+def crear_pdf_con_template(selected_row, analista_value):
     """
     Generates a report PDF using an HTML template and Jinja2.
     Returns the path of the created temporary PDF file.
+    
+    This function now receives the updated analyst name.
     """
     html_template = """
     <!DOCTYPE html>
@@ -225,7 +227,7 @@ def crear_pdf_con_template(selected_row, anlista_value):
             </div>
             <div class="field-row">
                 <span class="field-name">Analista:</span>
-                <span class="field-value">{{ anlista_value }}</span>
+                <span class="field-value">{{ analista }}</span>
             </div>
             <div class="field-row">
                 <span class="field-name">Piloto:</span>
@@ -241,7 +243,7 @@ def crear_pdf_con_template(selected_row, anlista_value):
     """
 
     template = Template(html_template)
-    html_out = template.render(row=selected_row)
+    html_out = template.render(row=selected_row, analista=analista_value)
 
     pdf_content = HTML(string=html_out).write_pdf()
 
@@ -312,7 +314,7 @@ if st.session_state.get("registro_actualizado"):
                 analista_value = st.session_state.get('analista_value_for_pdf', '')
                 
                 with st.spinner("Generando PDF y subiendo a Google Drive..."):
-                    pdf_file_path = crear_pdf_con_template(selected_row)
+                    pdf_file_path = crear_pdf_con_template(selected_row, analista_value)
                     pdf_url = subir_a_drive(pdf_file_path, DRIVE_FOLDER_ID)
                 
                 if pdf_file_path and pdf_url:
@@ -343,8 +345,8 @@ if st.session_state.get("registro_actualizado"):
                 
             if "registro_actualizado" in st.session_state:
                 del st.session_state["registro_actualizado"]
-                del st.session_state["mail_value_for_pdf"]
-                del st.session_state["analista_value_for_pdf"]
+                if "mail_value_for_pdf" in st.session_state: del st.session_state["mail_value_for_pdf"]
+                if "analista_value_for_pdf" in st.session_state: del st.session_state["analista_value_for_pdf"]
             st.rerun()
         else:
             st.error("Código incorrecto. Vuelve a intentarlo.")
@@ -354,7 +356,7 @@ if st.session_state.get("registro_actualizado"):
 if not tabla_entregas.empty:
     partidos = tabla_entregas['ID-partido'].unique().tolist()
     opcion_seleccionada = st.selectbox('Selecciona un ID de partido', options=partidos)
-    df_filtrado = tabla_entregas[tabla_entregas['ID-partido'] == opcion_seleccionada]
+    df_filtrado = tabla_entregas[tabla_entlabas['ID-partido'] == opcion_seleccionada]
 
     if not df_filtrado.empty:
         selected_row = df_filtrado.iloc[0]
@@ -411,5 +413,3 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
-
-
