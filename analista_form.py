@@ -388,7 +388,8 @@ if not tabla_entregas.empty:
                 analista_value_input = st.text_input("Analista (Manual)", value="", placeholder="Analista")
             else:
                 st.text_input("Analista (Airtable)", value=analista_value, disabled=True)
-                analista_value_input = analista_value # Usar el valor de Airtable si existe
+                #analista_value_input = analista_value # Usar el valor de Airtable si existe
+                analista_value_input = st.text_input("Analista (Airtable)", value=analista_value, disabled=True) # Usar el valor de Airtable si existe
 
             st.text_input("Piloto", value=selected_row.get('Piloto', 'N/A'), disabled=True)
             st.text_input("Fecha Partido", value=selected_row.get('Fecha partido', 'N/A'), disabled=True)
@@ -447,6 +448,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
