@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 import os
 from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -17,6 +19,7 @@ from io import BytesIO
 import random
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
 from airtable import Airtable
 
 # --- API DE AIRTABLE ---
@@ -120,7 +123,7 @@ def generar_pdf_certificado(nombre_completo, codigo_confirmacion, nombre_analist
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     
-    c.drawString(100, 750, "Certificado de Entrega de Imágenes")
+    c.drawString(100, 750, f"Certificado de Entrega de Imágenes")
     c.drawString(100, 700, f"Nombre completo del analista: {nombre_analista}")
     c.drawString(100, 650, f"Nombre del cliente: {nombre_completo}")
     c.drawString(100, 600, f"Código de confirmación: {codigo_confirmacion}")
@@ -193,11 +196,19 @@ def subir_a_drive(file_path, folder_id):
             fields='id'
         ).execute()
 
-        # Devolver webViewLink para la columna de Airtable
+        # Devolver webContentLink para la columna de Airtable
         return archivo.get('webContentLink')
     except Exception as e:
         st.error(f"Error al subir o compartir el archivo: {e}")
         return None
+
+def listar_archivos_en_drive(folder_id):
+    """
+    Función placeholder para listar archivos de Drive.
+    """
+    st.info("La función 'listar_archivos_en_drive' no está implementada.")
+    return None
+    
 
 # ---------- STREAMLIT ----------
 st.set_page_config(page_title="Dashboard de Entregas", page_icon="✅", layout="wide")
@@ -302,43 +313,53 @@ if not tabla_entregas.empty:
 
         if submitted:
             if verificado:
-                random_code = random.randint(100000, 999999)
-
-                # Actualizar Airtable
-                at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
-                record_id = selected_row.get('Rec')
-                if record_id:
-                    if sin_analista and sin_mail:
-                        fields_to_update = {'Verificado': 'Pendiente', 'Analista': analista_value, 'Mail': mail_value}
-                    elif sin_mail:
-                        fields_to_update = {'Verificado': 'Pendiente', 'Mail': mail_value}
-                    else:
-                        fields_to_update = {'Verificado': 'Pendiente'}
-
-                    at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
-
-                    st.write("DEBUG → Enviando correo a:", mail_value)
-                    #st.write("DEBUG → Código generado:", random_code)
-
-                    if not mail_value or pd.isna(mail_value):
-                        st.error("No hay correo válido para enviar el código.")
-                    else:
-                        try:
-                            # Envía el correo SÓLO con el código (sin adjuntos)
-                            if envia_mail(mail_value, selected_row.get('Nombre_Completo', ''), str(random_code), analista_value):
-                                st.success(f"Correo enviado a {mail_value}")
-                                # Guardar estado para mostrar la pantalla de código
-                                st.session_state["registro_actualizado"] = True
-                                st.session_state["codigo_generado"] = str(random_code)
-                                st.rerun()
-                        except Exception as e:
-                            st.error(f"No se pudo enviar el correo: {e}")
+                # Validar campos manuales antes de continuar
+                if (sin_analista and not analista_value) or (sin_mail and not mail_value):
+                    st.warning("El nombre del analista y el correo son obligatorios si no están en Airtable.")
                 else:
-                    st.error("No se pudo obtener el ID del registro.")
+                    random_code = random.randint(100000, 999999)
+
+                    # Actualizar Airtable
+                    at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
+                    record_id = selected_row.get('Rec')
+                    if record_id:
+                        if sin_analista and sin_mail:
+                            fields_to_update = {'Verificado': 'Pendiente', 'Analista': analista_value, 'Mail': mail_value}
+                        elif sin_mail:
+                            fields_to_update = {'Verificado': 'Pendiente', 'Mail': mail_value}
+                        else:
+                            fields_to_update = {'Verificado': 'Pendiente'}
+
+                        at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
+
+                        st.write("DEBUG → Enviando correo a:", mail_value)
+                        st.write("DEBUG → Código generado:", random_code)
+
+                        if not mail_value or pd.isna(mail_value):
+                            st.error("No hay correo válido para enviar el código.")
+                        else:
+                            try:
+                                # Envía el correo SÓLO con el código (sin adjuntos)
+                                if envia_mail(mail_value, selected_row.get('Nombre_Completo', ''), str(random_code), analista_value):
+                                    st.success(f"Correo enviado a {mail_value}")
+                                    # Guardar estado para mostrar la pantalla de código
+                                    st.session_state["registro_actualizado"] = True
+                                    st.session_state["codigo_generado"] = str(random_code)
+                                    st.rerun()
+                            except Exception as e:
+                                st.error(f"No se pudo enviar el correo: {e}")
+                    else:
+                        st.error("No se pudo obtener el ID del registro.")
             else:
                 st.warning("Debes marcar 'Marcar como Verificado'.")
     else:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
+# --- Archivos en Drive ---
+st.subheader("Archivos en la carpeta de Google Drive")
+if st.button("Listar archivos de la carpeta de Drive"):
+    listar_archivos_en_drive(DRIVE_FOLDER_ID)
+
 
