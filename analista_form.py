@@ -400,7 +400,8 @@ if not tabla_entregas.empty:
                 mail_value_input = st.text_input("Mail (Manual)", value="", placeholder="Introduce el correo...")
             else:
                 st.text_input("Mail (Airtable)", value=mail_value, disabled=False)
-                mail_value_input = mail_value # Usar el valor de Airtable si existe
+                #mail_value_input = mail_value # Usar el valor de Airtable si existe
+                mail_value_input = st.text_input("Mail (Airtable)", value=mail_value, disabled=False) # Usar el valor de Airtable si existe
 
             verificado = st.checkbox("Marcar como Verificado")
             submitted = st.form_submit_button("Actualizar Registro")
@@ -447,4 +448,5 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
