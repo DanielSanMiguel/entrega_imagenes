@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 import os
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -19,7 +17,6 @@ from io import BytesIO
 import random
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from reportlab.lib.utils import ImageReader
 from airtable import Airtable
 
 # --- API DE AIRTABLE ---
@@ -123,7 +120,7 @@ def generar_pdf_certificado(nombre_completo, codigo_confirmacion, nombre_analist
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     
-    c.drawString(100, 750, f"Certificado de Entrega de Imágenes")
+    c.drawString(100, 750, "Certificado de Entrega de Imágenes")
     c.drawString(100, 700, f"Nombre completo del analista: {nombre_analista}")
     c.drawString(100, 650, f"Nombre del cliente: {nombre_completo}")
     c.drawString(100, 600, f"Código de confirmación: {codigo_confirmacion}")
@@ -361,5 +358,6 @@ else:
 st.subheader("Archivos en la carpeta de Google Drive")
 if st.button("Listar archivos de la carpeta de Drive"):
     listar_archivos_en_drive(DRIVE_FOLDER_ID)
+
 
 
