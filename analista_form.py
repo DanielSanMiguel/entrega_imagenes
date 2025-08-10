@@ -32,7 +32,7 @@ if "authenticated" not in st.session_state:
 # Para este ejemplo, usamos una contraseña simple. En un entorno real,
 # usarías st.secrets para almacenar esto de forma segura.
 # Por ejemplo: PASSWORD = st.secrets["password"]
-PASSWORD = "micontrasena"
+PASSWORD = st.secrets["PASSWORD"]
 
 if not st.session_state["authenticated"]:
     st.subheader("Acceso Restringido")
@@ -387,6 +387,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
