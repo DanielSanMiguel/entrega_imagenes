@@ -322,7 +322,8 @@ if st.session_state.get("registro_actualizado"):
             
             if 'selected_row' in st.session_state:
                 selected_row = st.session_state['selected_row']
-                mail_value = selected_row.get('Mail', '')
+                #mail_value = selected_row.get('Mail', '')
+                mail_value = mail_value_input
                 #analista_value = selected_row.get('Analista', '')
                 analista_value = analista_value_input
                 
@@ -401,8 +402,8 @@ if not tabla_entregas.empty:
                 sin_mail = True
                 mail_value_input = st.text_input("Mail (Manual)", value="", placeholder="Introduce el correo...")
             else:
-                st.text_input("Mail (Airtable)", value=mail_value, disabled=True)
-                mail_value_input = mail_value # Usar el valor de Airtable si existe
+                mail_value_input = st.text_input("Mail (Airtable)", value=mail_value, disabled=False)
+                #mail_value_input = mail_value # Usar el valor de Airtable si existe
 
             verificado = st.checkbox("Marcar como Verificado")
             submitted = st.form_submit_button("Actualizar Registro")
@@ -425,6 +426,8 @@ if not tabla_entregas.empty:
                         elif analista_value != analista_value_input:
                             fields_to_update['Analista'] = analista_value_input
                         if sin_mail:
+                            fields_to_update['Mail'] = mail_value_input
+                        elif mail_value != mail_value_input:
                             fields_to_update['Mail'] = mail_value_input
                         
                         fields_to_update['Verificado'] = 'Pendiente'
@@ -451,6 +454,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
