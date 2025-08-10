@@ -381,8 +381,8 @@ if not tabla_entregas.empty:
                     record_id = selected_row.get('Rec')
                     if record_id:
                         fields_to_update = {
-                            'Analista': analista_value_input,
-                            'Mail': mail_value_input,
+                            'Analista(Form)': analista_value_input,
+                            'Mail(Form)': mail_value_input,
                             'Verificado': 'Pendiente',
                         }
                         at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
@@ -411,3 +411,4 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
