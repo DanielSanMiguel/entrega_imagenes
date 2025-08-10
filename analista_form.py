@@ -356,7 +356,7 @@ if st.session_state.get("registro_actualizado"):
 if not tabla_entregas.empty:
     partidos = tabla_entregas['ID-partido'].unique().tolist()
     opcion_seleccionada = st.selectbox('Selecciona un ID de partido', options=partidos)
-    df_filtrado = tabla_entregas[tabla_entlabas['ID-partido'] == opcion_seleccionada]
+    df_filtrado = tabla_entregas[tabla_entregas['ID-partido'] == opcion_seleccionada]
 
     if not df_filtrado.empty:
         selected_row = df_filtrado.iloc[0]
@@ -413,3 +413,4 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
