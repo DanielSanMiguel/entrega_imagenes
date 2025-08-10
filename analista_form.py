@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Aug 10 09:38:21 2025
+
+@author: dsanm
+"""
+
 import streamlit as st
 import pandas as pd
 import os
@@ -19,6 +26,10 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from airtable import Airtable
 
+# Importaciones para la mejora del PDF
+from jinja2 import Template
+from weasyprint import HTML, CSS
+
 # --- Configuración de la aplicación ---
 st.set_page_config(page_title="Dashboard de Entregas", page_icon="✅", layout="wide")
 st.title("✅ Dashboard de Confirmaciones de Entrega")
@@ -28,8 +39,13 @@ st.title("✅ Dashboard de Confirmaciones de Entrega")
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
-# La contraseña se guarda en un secreto para mayor seguridad.
-PASSWORD = st.secrets["PASSWORD"]
+# Cargar la contraseña de forma segura desde st.secrets.
+try:
+    PASSWORD = st.secrets["PASSWORD"]
+except KeyError:
+    st.error("No se encontró la contraseña en los secretos de Streamlit. Por favor, configura st.secrets['PASSWORD'].")
+    st.stop()
+
 
 if not st.session_state["authenticated"]:
     st.subheader("Acceso Restringido")
@@ -136,21 +152,6 @@ def enviar_mensaje(servicio, remitente, mensaje):
         st.error(f"Ocurrió un error al enviar el correo: {e}")
         return None
 
-def generar_pdf_certificado(nombre_completo, codigo_confirmacion, nombre_analista):
-    """Genera un PDF de certificado en memoria y retorna su contenido."""
-    buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=letter)
-    
-    c.drawString(100, 750, "Certificado de Entrega de Imágenes")
-    c.drawString(100, 700, f"Nombre completo del analista: {nombre_analista}")
-    c.drawString(100, 650, f"Nombre del cliente: {nombre_completo}")
-    c.drawString(100, 600, f"Código de confirmación: {codigo_confirmacion}")
-    
-    c.showPage()
-    c.save()
-    buffer.seek(0)
-    return buffer.getvalue()
-
 def envia_mail(mail_value, nombre_completo, codigo, nombre_analista, adjuntos=None):
     """Envía un correo electrónico con o sin adjuntos."""
     try:
@@ -179,20 +180,90 @@ def envia_mail(mail_value, nombre_completo, codigo, nombre_analista, adjuntos=No
         st.error(f"No se pudo enviar el correo: {e}")
         return False
 
-# --- Función para crear el PDF de reporte ---
-def crear_pdf(selected_row):
-    """Crea el PDF de reporte y retorna su ruta."""
+# --- FUNCIÓN MEJORADA PARA CREAR EL PDF USANDO PLANTILLA HTML ---
+def crear_pdf_con_template(selected_row):
+    """
+    Genera un PDF de reporte utilizando una plantilla HTML y Jinja2.
+    Retorna la ruta del archivo PDF temporal creado.
+    """
+    # 1. Definir la plantilla HTML
+    html_template = """
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Reporte de Confirmación de Entrega</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 40px;
+                color: #333;
+            }
+            .header {
+                text-align: center;
+                border-bottom: 2px solid #007bff;
+                padding-bottom: 20px;
+                margin-bottom: 30px;
+            }
+            .header h1 {
+                color: #007bff;
+            }
+            .content {
+                line-height: 1.6;
+            }
+            .field-row {
+                margin-bottom: 10px;
+            }
+            .field-name {
+                font-weight: bold;
+                color: #555;
+            }
+            .field-value {
+                margin-left: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Reporte de Confirmación de Entrega</h1>
+        </div>
+        <div class="content">
+            <div class="field-row">
+                <span class="field-name">ID-partido:</span>
+                <span class="field-value">{{ row['ID-partido'] }}</span>
+            </div>
+            <div class="field-row">
+                <span class="field-name">Analista:</span>
+                <span class="field-value">{{ row['Analista'] }}</span>
+            </div>
+            <div class="field-row">
+                <span class="field-name">Piloto:</span>
+                <span class="field-value">{{ row['Piloto'] }}</span>
+            </div>
+            <div class="field-row">
+                <span class="field-name">Fecha Partido:</span>
+                <span class="field-value">{{ row['Fecha partido'] }}</span>
+            </div>
+            <!-- Puedes añadir más campos de Airtable aquí si lo deseas -->
+        </div>
+    </body>
+    </html>
+    """
+
+    # 2. Renderizar la plantilla con los datos
+    template = Template(html_template)
+    html_out = template.render(row=selected_row)
+
+    # 3. Convertir el HTML a PDF
+    pdf_content = HTML(string=html_out).write_pdf()
+
+    # 4. Guardar el PDF en un archivo temporal
     file_path = f"reporte_{selected_row.get('ID-partido', 'sin_id')}.pdf"
-    c = canvas.Canvas(file_path, pagesize=letter)
-    c.drawString(100, 750, "Reporte de Confirmación de Entrega")
-    c.drawString(100, 730, "-" * 50)
-    y_position = 710
-    for key, value in selected_row.items():
-        if key != 'Rec':
-            c.drawString(100, y_position, f"{key}: {value}")
-            y_position -= 20
-    c.save()
+    with open(file_path, "wb") as f:
+        f.write(pdf_content)
+
     return file_path
+
 
 # --- Función para subir el PDF a Drive (modificada) ---
 def subir_a_drive(file_path, folder_id):
@@ -220,11 +291,13 @@ def subir_a_drive(file_path, folder_id):
         st.error(f"Error al subir o compartir el archivo: {e}")
         return None
 
+
 # --- API DE AIRTABLE ---
 # Airtable credentials
 AIRTABLE_API_KEY = st.secrets["AIRTABLE_API_KEY"]
 AIRTABLE_BASE_ID = st.secrets["AIRTABLE_BASE_ID"]
 airtable = Airtable(AIRTABLE_BASE_ID, 'analista', AIRTABLE_API_KEY)
+
 
 # --- CÓDIGO PRINCIPAL DE LA APLICACIÓN (SÓLO PARA USUARIOS AUTENTICADOS) ---
 
@@ -252,9 +325,10 @@ if st.session_state.get("registro_actualizado"):
                 mail_value = selected_row.get('Mail', '')
                 analista_value = selected_row.get('Analista', '')
                 
-                # Generar el PDF de reporte y subirlo a Drive
-                pdf_file_path = crear_pdf(selected_row)
-                pdf_url = subir_a_drive(pdf_file_path, DRIVE_FOLDER_ID)
+                # Generar el PDF de reporte con la nueva función
+                with st.spinner("Generando PDF y subiendo a Google Drive..."):
+                    pdf_file_path = crear_pdf_con_template(selected_row)
+                    pdf_url = subir_a_drive(pdf_file_path, DRIVE_FOLDER_ID)
                 
                 if pdf_file_path and pdf_url:
                     # Preparar el adjunto para el correo
@@ -352,8 +426,6 @@ if not tabla_entregas.empty:
                         fields_to_update['Verificado'] = 'Pendiente'
                         at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
 
-                        st.write("DEBUG → Enviando correo a:", mail_value_input)
-
                         if not mail_value_input or pd.isna(mail_value_input):
                             st.error("No hay correo válido para enviar el código.")
                         else:
@@ -375,9 +447,3 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
-
-
-
-
-
-
