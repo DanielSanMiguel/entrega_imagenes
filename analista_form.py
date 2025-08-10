@@ -352,12 +352,3 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
-
-# --- Archivos en Drive ---
-st.subheader("Archivos en la carpeta de Google Drive")
-if st.button("Listar archivos de la carpeta de Drive"):
-    listar_archivos_en_drive(DRIVE_FOLDER_ID)
-
-
-
-
