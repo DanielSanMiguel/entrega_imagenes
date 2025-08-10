@@ -173,7 +173,7 @@ def envia_mail(mail_value, nombre_completo, codigo, nombre_analista, adjuntos=No
         return False
 
 # --- IMPROVED PDF CREATION FUNCTION USING HTML TEMPLATE ---
-def crear_pdf_con_template(selected_row):
+def crear_pdf_con_template(selected_row, anlista_value):
     """
     Generates a report PDF using an HTML template and Jinja2.
     Returns the path of the created temporary PDF file.
@@ -225,7 +225,7 @@ def crear_pdf_con_template(selected_row):
             </div>
             <div class="field-row">
                 <span class="field-name">Analista:</span>
-                <span class="field-value">{{ row['Analista'] }}</span>
+                <span class="field-value">{{ anlista_value }}</span>
             </div>
             <div class="field-row">
                 <span class="field-name">Piloto:</span>
@@ -411,4 +411,5 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
