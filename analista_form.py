@@ -19,11 +19,35 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from airtable import Airtable
 
-# --- API DE AIRTABLE ---
-# Airtable credentials
-AIRTABLE_API_KEY = st.secrets["AIRTABLE_API_KEY"]
-AIRTABLE_BASE_ID = st.secrets["AIRTABLE_BASE_ID"]
-airtable = Airtable(AIRTABLE_BASE_ID, 'analista', AIRTABLE_API_KEY)
+# --- Configuración de la aplicación ---
+st.set_page_config(page_title="Dashboard de Entregas", page_icon="✅", layout="wide")
+st.title("✅ Dashboard de Confirmaciones de Entrega")
+
+# --- LÓGICA DE INICIO DE SESIÓN ---
+# Se utiliza st.session_state para mantener el estado de autenticación.
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
+# La contraseña se guarda en un secreto para mayor seguridad.
+# Para este ejemplo, usamos una contraseña simple. En un entorno real,
+# usarías st.secrets para almacenar esto de forma segura.
+# Por ejemplo: PASSWORD = st.secrets["password"]
+PASSWORD = st.secrets["PASSWORD"]
+
+if not st.session_state["authenticated"]:
+    st.subheader("Acceso Restringido")
+    password_input = st.text_input("Introduce la contraseña para acceder:", type="password")
+    
+    if st.button("Acceder"):
+        if password_input == PASSWORD:
+            st.session_state["authenticated"] = True
+            st.success("Acceso concedido.")
+            st.rerun()
+        else:
+            st.error("Contraseña incorrecta.")
+    
+    st.stop() # Detiene la ejecución si el usuario no está autenticado
+
 
 # --- APIs DE GOOGLE ---
 SCOPES_GMAIL = ['https://www.googleapis.com/auth/gmail.send']
@@ -207,9 +231,14 @@ def listar_archivos_en_drive(folder_id):
     return None
     
 
-# ---------- STREAMLIT ----------
-st.set_page_config(page_title="Dashboard de Entregas", page_icon="✅", layout="wide")
-st.title("✅ Dashboard de Confirmaciones de Entrega")
+# --- API DE AIRTABLE ---
+# Airtable credentials
+AIRTABLE_API_KEY = st.secrets["AIRTABLE_API_KEY"]
+AIRTABLE_BASE_ID = st.secrets["AIRTABLE_BASE_ID"]
+airtable = Airtable(AIRTABLE_BASE_ID, 'analista', AIRTABLE_API_KEY)
+
+
+# --- CÓDIGO PRINCIPAL DE LA APLICACIÓN (SÓLO PARA USUARIOS AUTENTICADOS) ---
 
 @st.cache_data(ttl=600)
 def conectar_a_airtable():
@@ -290,9 +319,10 @@ if not tabla_entregas.empty:
             sin_analista = False
             if pd.isna(analista_value) or not analista_value:
                 sin_analista = True
-                analista_value = st.text_input("Analista (Manual)", value="", placeholder="Analista")
+                analista_value_input = st.text_input("Analista (Manual)", value="", placeholder="Analista")
             else:
                 st.text_input("Analista (Airtable)", value=analista_value, disabled=True)
+                analista_value_input = analista_value # Usar el valor de Airtable si existe
 
             st.text_input("Piloto", value=selected_row.get('Piloto', 'N/A'), disabled=True)
             st.text_input("Fecha Partido", value=selected_row.get('Fecha partido', 'N/A'), disabled=True)
@@ -301,9 +331,10 @@ if not tabla_entregas.empty:
             sin_mail = False
             if pd.isna(mail_value) or not mail_value:
                 sin_mail = True
-                mail_value = st.text_input("Mail (Manual)", value="", placeholder="Introduce el correo...")
+                mail_value_input = st.text_input("Mail (Manual)", value="", placeholder="Introduce el correo...")
             else:
                 st.text_input("Mail (Airtable)", value=mail_value, disabled=True)
+                mail_value_input = mail_value # Usar el valor de Airtable si existe
 
             verificado = st.checkbox("Marcar como Verificado")
             submitted = st.form_submit_button("Actualizar Registro")
@@ -311,7 +342,7 @@ if not tabla_entregas.empty:
         if submitted:
             if verificado:
                 # Validar campos manuales antes de continuar
-                if (sin_analista and not analista_value) or (sin_mail and not mail_value):
+                if (sin_analista and not analista_value_input) or (sin_mail and not mail_value_input):
                     st.warning("El nombre del analista y el correo son obligatorios si no están en Airtable.")
                 else:
                     random_code = random.randint(100000, 999999)
@@ -320,24 +351,24 @@ if not tabla_entregas.empty:
                     at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                     record_id = selected_row.get('Rec')
                     if record_id:
-                        if sin_analista and sin_mail:
-                            fields_to_update = {'Verificado': 'Pendiente', 'Analista': analista_value, 'Mail': mail_value}
-                        elif sin_mail:
-                            fields_to_update = {'Verificado': 'Pendiente', 'Mail': mail_value}
-                        else:
-                            fields_to_update = {'Verificado': 'Pendiente'}
-
+                        fields_to_update = {}
+                        if sin_analista:
+                             fields_to_update['Analista'] = analista_value_input
+                        if sin_mail:
+                            fields_to_update['Mail'] = mail_value_input
+                        
+                        fields_to_update['Verificado'] = 'Pendiente'
                         at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
 
-                        st.write("DEBUG → Enviando correo a:", mail_value)
+                        st.write("DEBUG → Enviando correo a:", mail_value_input)
 
-                        if not mail_value or pd.isna(mail_value):
+                        if not mail_value_input or pd.isna(mail_value_input):
                             st.error("No hay correo válido para enviar el código.")
                         else:
                             try:
                                 # Envía el correo SÓLO con el código (sin adjuntos)
-                                if envia_mail(mail_value, selected_row.get('Nombre_Completo', ''), str(random_code), analista_value):
-                                    st.success(f"Correo enviado a {mail_value}")
+                                if envia_mail(mail_value_input, selected_row.get('Nombre_Completo', ''), str(random_code), analista_value_input):
+                                    st.success(f"Correo enviado a {mail_value_input}")
                                     # Guardar estado para mostrar la pantalla de código
                                     st.session_state["registro_actualizado"] = True
                                     st.session_state["codigo_generado"] = str(random_code)
@@ -352,3 +383,4 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
