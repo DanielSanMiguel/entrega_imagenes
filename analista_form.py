@@ -330,7 +330,6 @@ if not tabla_entregas.empty:
                         at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
 
                         st.write("DEBUG → Enviando correo a:", mail_value)
-                        st.write("DEBUG → Código generado:", random_code)
 
                         if not mail_value or pd.isna(mail_value):
                             st.error("No hay correo válido para enviar el código.")
@@ -358,6 +357,7 @@ else:
 st.subheader("Archivos en la carpeta de Google Drive")
 if st.button("Listar archivos de la carpeta de Drive"):
     listar_archivos_en_drive(DRIVE_FOLDER_ID)
+
 
 
 
