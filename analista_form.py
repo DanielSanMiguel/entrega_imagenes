@@ -30,22 +30,19 @@ from airtable import Airtable
 from jinja2 import Template
 from weasyprint import HTML, CSS
 
-# --- Configuración de la aplicación ---
+# --- App configuration ---
 st.set_page_config(page_title="Dashboard de Entregas", page_icon="✅", layout="wide")
 st.title("✅ Dashboard de Confirmaciones de Entrega")
 
-# --- LÓGICA DE INICIO DE SESIÓN ---
-# Se utiliza st.session_state para mantener el estado de autenticación.
+# --- LOGIN LOGIC ---
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
-# Cargar la contraseña de forma segura desde st.secrets.
 try:
     PASSWORD = st.secrets["PASSWORD"]
 except KeyError:
     st.error("No se encontró la contraseña en los secretos de Streamlit. Por favor, configura st.secrets['PASSWORD'].")
     st.stop()
-
 
 if not st.session_state["authenticated"]:
     st.subheader("Acceso Restringido")
@@ -59,27 +56,24 @@ if not st.session_state["authenticated"]:
         else:
             st.error("Contraseña incorrecta.")
     
-    st.stop() # Detiene la ejecución si el usuario no está autenticado
+    st.stop()
 
-
-# --- APIs DE GOOGLE ---
+# --- GOOGLE APIs ---
 SCOPES_GMAIL = ['https://www.googleapis.com/auth/gmail.send']
 SCOPES_DRIVE = ['https://www.googleapis.com/auth/drive']
 DRIVE_FOLDER_ID = "1yNFgOvRclge1SY9QtvnD980f3-4In_hs"
 
 def get_creds(scopes):
     """
-    Gestiona la autenticación de Google utilizando un token de refresco
-    guardado en st.secrets, para evitar el flujo de servidor local.
+    Manages Google authentication using a refresh token
+    stored in st.secrets, to avoid the local server flow.
     """
     creds = None
     try:
-        # Intenta cargar credenciales desde st.secrets
         creds_info = st.secrets.get("google_creds")
         if creds_info and "token" in creds_info and "refresh_token" in creds_info:
             creds = Credentials.from_authorized_user_info(info=creds_info, scopes=scopes)
 
-            # Si el token ha expirado, refresca
             if creds.expired and creds.refresh_token:
                 creds.refresh(Request())
         else:
@@ -93,30 +87,28 @@ def get_creds(scopes):
     return creds
 
 def autenticar_gmail():
-    """Autentica y devuelve el servicio de la API de Gmail."""
+    """Authenticates and returns the Gmail API service."""
     creds = get_creds(SCOPES_GMAIL)
     if creds:
         return build('gmail', 'v1', credentials=creds)
     return None
 
 def autenticar_drive():
-    """Autentica y devuelve el servicio de la API de Google Drive."""
+    """Authenticates and returns the Google Drive API service."""
     creds = get_creds(SCOPES_DRIVE)
     if creds:
         return build('drive', 'v3', credentials=creds)
     return None
 
 def crear_mensaje(remitente, destinatario, asunto, cuerpo_html, adjuntos=None):
-    """Crea y devuelve un mensaje de correo electrónico con adjuntos."""
+    """Creates and returns an email message with attachments."""
     mensaje = MIMEMultipart()
     mensaje['to'] = destinatario
     mensaje['from'] = remitente
     mensaje['subject'] = asunto
     
-    # Cuerpo del correo
     mensaje.attach(MIMEText(cuerpo_html, 'html'))
     
-    # Adjuntos
     if adjuntos:
         for adjunto_dict in adjuntos:
             filename = adjunto_dict['nombre']
@@ -143,7 +135,7 @@ def crear_mensaje(remitente, destinatario, asunto, cuerpo_html, adjuntos=None):
     return {'raw': base64.urlsafe_b64encode(mensaje.as_bytes()).decode()}
 
 def enviar_mensaje(servicio, remitente, mensaje):
-    """Envía el mensaje a través del servicio de la API de Gmail."""
+    """Sends the message via the Gmail API service."""
     try:
         mensaje_enviado = (servicio.users().messages().send(userId=remitente, body=mensaje).execute())
         st.success(f"Correo enviado correctamente. ID del mensaje: {mensaje_enviado['id']}")
@@ -153,13 +145,13 @@ def enviar_mensaje(servicio, remitente, mensaje):
         return None
 
 def envia_mail(mail_value, nombre_completo, codigo, nombre_analista, adjuntos=None):
-    """Envía un correo electrónico con o sin adjuntos."""
+    """Sends an email with or without attachments."""
     try:
         service_gmail = autenticar_gmail()
         if not service_gmail:
             return False
             
-        remitente = 'me'  # La cuenta que estás autenticando
+        remitente = 'me'
         asunto = 'Confirmación de entrega de imágenes'
         
         cuerpo = f"""
@@ -180,13 +172,12 @@ def envia_mail(mail_value, nombre_completo, codigo, nombre_analista, adjuntos=No
         st.error(f"No se pudo enviar el correo: {e}")
         return False
 
-# --- FUNCIÓN MEJORADA PARA CREAR EL PDF USANDO PLANTILLA HTML ---
+# --- IMPROVED PDF CREATION FUNCTION USING HTML TEMPLATE ---
 def crear_pdf_con_template(selected_row):
     """
-    Genera un PDF de reporte utilizando una plantilla HTML y Jinja2.
-    Retorna la ruta del archivo PDF temporal creado.
+    Generates a report PDF using an HTML template and Jinja2.
+    Returns the path of the created temporary PDF file.
     """
-    # 1. Definir la plantilla HTML
     html_template = """
     <!DOCTYPE html>
     <html lang="es">
@@ -244,30 +235,27 @@ def crear_pdf_con_template(selected_row):
                 <span class="field-name">Fecha Partido:</span>
                 <span class="field-value">{{ row['Fecha partido'] }}</span>
             </div>
-            <!-- Puedes añadir más campos de Airtable aquí si lo deseas -->
         </div>
     </body>
     </html>
     """
 
-    # 2. Renderizar la plantilla con los datos
     template = Template(html_template)
     html_out = template.render(row=selected_row)
 
-    # 3. Convertir el HTML a PDF
     pdf_content = HTML(string=html_out).write_pdf()
 
-    # 4. Guardar el PDF en un archivo temporal
     file_path = f"reporte_{selected_row.get('ID-partido', 'sin_id')}.pdf"
     with open(file_path, "wb") as f:
         f.write(pdf_content)
 
     return file_path
 
-
-# --- Función para subir el PDF a Drive (modificada) ---
+# --- Function to upload PDF to Drive (modified) ---
 def subir_a_drive(file_path, folder_id):
-    """Sube un archivo a Google Drive, lo hace público y devuelve su enlace de visualización."""
+    """
+    Uploads a file to Google Drive, makes it public, and returns its view link.
+    """
     servicio_drive = autenticar_drive()
     if not servicio_drive:
         return None
@@ -278,28 +266,25 @@ def subir_a_drive(file_path, folder_id):
         archivo = servicio_drive.files().create(body=file_metadata, media_body=media, fields='id, webContentLink').execute()
         st.success(f"Archivo subido a Google Drive. ID: {archivo.get('id')}")
 
-        # Hacer el archivo público para que Airtable pueda acceder
         servicio_drive.permissions().create(
             fileId=archivo.get('id'),
             body={'type': 'anyone', 'role': 'reader'},
             fields='id'
         ).execute()
 
-        # Devolver webContentLink para la columna de Airtable
         return archivo.get('webContentLink')
     except Exception as e:
         st.error(f"Error al subir o compartir el archivo: {e}")
         return None
 
 
-# --- API DE AIRTABLE ---
-# Airtable credentials
+# --- AIRTABLE API ---
 AIRTABLE_API_KEY = st.secrets["AIRTABLE_API_KEY"]
 AIRTABLE_BASE_ID = st.secrets["AIRTABLE_BASE_ID"]
 airtable = Airtable(AIRTABLE_BASE_ID, 'analista', AIRTABLE_API_KEY)
 
 
-# --- CÓDIGO PRINCIPAL DE LA APLICACIÓN (SÓLO PARA USUARIOS AUTENTICADOS) ---
+# --- MAIN APPLICATION CODE (AUTHENTICATED USERS ONLY) ---
 
 @st.cache_data(ttl=600)
 def conectar_a_airtable():
@@ -311,7 +296,7 @@ def conectar_a_airtable():
 
 tabla_entregas = conectar_a_airtable()
 
-# --- Mostrar pantalla de introducción de código si ya se actualizó ---
+# --- Show code input screen if already updated ---
 if st.session_state.get("registro_actualizado"):
     st.subheader("Introduce el código enviado al analista")
     codigo_ingresado = st.text_input("Código")
@@ -322,25 +307,21 @@ if st.session_state.get("registro_actualizado"):
             
             if 'selected_row' in st.session_state:
                 selected_row = st.session_state['selected_row']
-                #mail_value = selected_row.get('Mail', '')
-                mail_value = mail_value_input
-                #analista_value = selected_row.get('Analista', '')
-                analista_value = analista_value_input
+                # Get mail and analyst values from session state
+                mail_value = st.session_state.get('mail_value_for_pdf', '')
+                analista_value = st.session_state.get('analista_value_for_pdf', '')
                 
-                # Generar el PDF de reporte con la nueva función
                 with st.spinner("Generando PDF y subiendo a Google Drive..."):
                     pdf_file_path = crear_pdf_con_template(selected_row)
                     pdf_url = subir_a_drive(pdf_file_path, DRIVE_FOLDER_ID)
                 
                 if pdf_file_path and pdf_url:
-                    # Preparar el adjunto para el correo
                     with open(pdf_file_path, "rb") as f:
                         adjuntos = [{'nombre': os.path.basename(pdf_file_path), 'contenido': f.read()}]
                     
-                    # Enviar el PDF por mail y actualizar Airtable
                     if mail_value and envia_mail(mail_value, selected_row.get('Nombre_Completo', ''), "", analista_value, adjuntos):
                         st.success("Correo con PDF enviado correctamente.")
-                        # Actualizar Airtable
+                        
                         at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                         record_id = selected_row.get('Rec')
                         if record_id:
@@ -351,27 +332,25 @@ if st.session_state.get("registro_actualizado"):
                             at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
                             st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
                             
-                            # LIMPIAR EL CACHÉ DE AIRTABLE
                             conectar_a_airtable.clear()
-                            
                         else:
                             st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
                             
-                    # Eliminar el archivo local
                     if os.path.exists(pdf_file_path):
                         os.remove(pdf_file_path)
             else:
                 st.error("No se pudo recuperar el registro. Por favor, reinicia el proceso.")
                 
-            # Limpiar la sesión para volver a la pantalla principal
             if "registro_actualizado" in st.session_state:
                 del st.session_state["registro_actualizado"]
+                del st.session_state["mail_value_for_pdf"]
+                del st.session_state["analista_value_for_pdf"]
             st.rerun()
         else:
             st.error("Código incorrecto. Vuelve a intentarlo.")
     st.stop()
 
-# --- Pantalla principal ---
+# --- Main screen ---
 if not tabla_entregas.empty:
     partidos = tabla_entregas['ID-partido'].unique().tolist()
     opcion_seleccionada = st.selectbox('Selecciona un ID de partido', options=partidos)
@@ -379,70 +358,48 @@ if not tabla_entregas.empty:
 
     if not df_filtrado.empty:
         selected_row = df_filtrado.iloc[0]
-        # Guardar la fila seleccionada en el estado de la sesión para usarla después
         st.session_state['selected_row'] = selected_row
         
         with st.form("update_form"):
-            analista_value = selected_row.get('Analista', '')
-            sin_analista = False
-            if pd.isna(analista_value) or not analista_value:
-                sin_analista = True
-                analista_value_input = st.text_input("Analista (Manual)", value="", placeholder="Analista")
-            else:
-                #st.text_input("Analista (Airtable)", value=analista_value, disabled=True)
-                #analista_value_input = analista_value # Usar el valor de Airtable si existe
-                analista_value_input = st.text_input("Analista (Airtable)", value=analista_value, disabled=False) # Usar el valor de Airtable si existe
-
+            analista_value_input = st.text_input("Analista", value=selected_row.get('Analista', ''))
             st.text_input("Piloto", value=selected_row.get('Piloto', 'N/A'), disabled=True)
             st.text_input("Fecha Partido", value=selected_row.get('Fecha partido', 'N/A'), disabled=True)
-
-            mail_value = selected_row.get('Mail', '')
-            sin_mail = False
-            if pd.isna(mail_value) or not mail_value:
-                sin_mail = True
-                mail_value_input = st.text_input("Mail (Manual)", value="", placeholder="Introduce el correo...")
-            else:
-                mail_value_input = st.text_input("Mail (Airtable)", value=mail_value, disabled=False)
-                #mail_value_input = mail_value # Usar el valor de Airtable si existe
-
+            mail_value_input = st.text_input("Mail", value=selected_row.get('Mail', ''))
+            
             verificado = st.checkbox("Marcar como Verificado")
             submitted = st.form_submit_button("Actualizar Registro")
 
         if submitted:
             if verificado:
-                # Validar campos manuales antes de continuar
-                if (sin_analista and not analista_value_input) or (sin_mail and not mail_value_input):
-                    st.warning("El nombre del analista y el correo son obligatorios si no están en Airtable.")
+                if not analista_value_input or not mail_value_input:
+                    st.warning("El nombre del analista y el correo son obligatorios.")
                 else:
                     random_code = random.randint(100000, 999999)
 
-                    # Actualizar Airtable
+                    # Update Airtable
                     at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                     record_id = selected_row.get('Rec')
                     if record_id:
-                        fields_to_update = {}
-                        if sin_analista:
-                            fields_to_update['Analista'] = analista_value_input
-                        elif analista_value != analista_value_input:
-                            fields_to_update['Analista'] = analista_value_input
-                        if sin_mail:
-                            fields_to_update['Mail'] = mail_value_input
-                        elif mail_value != mail_value_input:
-                            fields_to_update['Mail'] = mail_value_input
-                        
-                        fields_to_update['Verificado'] = 'Pendiente'
+                        fields_to_update = {
+                            'Analista': analista_value_input,
+                            'Mail': mail_value_input,
+                            'Verificado': 'Pendiente',
+                        }
                         at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
 
                         if not mail_value_input or pd.isna(mail_value_input):
                             st.error("No hay correo válido para enviar el código.")
                         else:
                             try:
-                                # Envía el correo SÓLO con el código (sin adjuntos)
                                 if envia_mail(mail_value_input, selected_row.get('Nombre_Completo', ''), str(random_code), analista_value_input):
                                     st.success(f"Correo enviado a {mail_value_input}")
-                                    # Guardar estado para mostrar la pantalla de código
+                                    
+                                    # Save state for the code screen and for the PDF generation
                                     st.session_state["registro_actualizado"] = True
                                     st.session_state["codigo_generado"] = str(random_code)
+                                    st.session_state["mail_value_for_pdf"] = mail_value_input
+                                    st.session_state["analista_value_for_pdf"] = analista_value_input
+
                                     st.rerun()
                             except Exception as e:
                                 st.error(f"No se pudo enviar el correo: {e}")
@@ -454,12 +411,3 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
-
-
-
-
-
-
-
-
-
