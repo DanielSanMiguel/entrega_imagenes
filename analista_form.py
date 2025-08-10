@@ -223,20 +223,11 @@ def subir_a_drive(file_path, folder_id):
         st.error(f"Error al subir o compartir el archivo: {e}")
         return None
 
-def listar_archivos_en_drive(folder_id):
-    """
-    Función placeholder para listar archivos de Drive.
-    """
-    st.info("La función 'listar_archivos_en_drive' no está implementada.")
-    return None
-    
-
 # --- API DE AIRTABLE ---
 # Airtable credentials
 AIRTABLE_API_KEY = st.secrets["AIRTABLE_API_KEY"]
 AIRTABLE_BASE_ID = st.secrets["AIRTABLE_BASE_ID"]
 airtable = Airtable(AIRTABLE_BASE_ID, 'analista', AIRTABLE_API_KEY)
-
 
 # --- CÓDIGO PRINCIPAL DE LA APLICACIÓN (SÓLO PARA USUARIOS AUTENTICADOS) ---
 
@@ -387,6 +378,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
