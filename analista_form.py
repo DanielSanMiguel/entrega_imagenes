@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 import os
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -19,7 +17,6 @@ from io import BytesIO
 import random
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from reportlab.lib.utils import ImageReader
 from airtable import Airtable
 
 # --- API DE AIRTABLE ---
@@ -123,7 +120,7 @@ def generar_pdf_certificado(nombre_completo, codigo_confirmacion, nombre_analist
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     
-    c.drawString(100, 750, f"Certificado de Entrega de Imágenes")
+    c.drawString(100, 750, "Certificado de Entrega de Imágenes")
     c.drawString(100, 700, f"Nombre completo del analista: {nombre_analista}")
     c.drawString(100, 650, f"Nombre del cliente: {nombre_completo}")
     c.drawString(100, 600, f"Código de confirmación: {codigo_confirmacion}")
@@ -201,14 +198,6 @@ def subir_a_drive(file_path, folder_id):
     except Exception as e:
         st.error(f"Error al subir o compartir el archivo: {e}")
         return None
-
-def listar_archivos_en_drive(folder_id):
-    """
-    Función placeholder para listar archivos de Drive.
-    """
-    st.info("La función 'listar_archivos_en_drive' no está implementada.")
-    return None
-    
 
 # ---------- STREAMLIT ----------
 st.set_page_config(page_title="Dashboard de Entregas", page_icon="✅", layout="wide")
@@ -352,3 +341,4 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
