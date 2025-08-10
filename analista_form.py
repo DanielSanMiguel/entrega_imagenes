@@ -31,6 +31,7 @@ airtable = Airtable(AIRTABLE_BASE_ID, 'analista', AIRTABLE_API_KEY)
 # --- APIs DE GOOGLE ---
 SCOPES_GMAIL = ['https://www.googleapis.com/auth/gmail.send']
 SCOPES_DRIVE = ['https://www.googleapis.com/auth/drive']
+DRIVE_FOLDER_ID = "1yNFgOvRclge1SY9QtvnD980f3-4In_hs"
 
 def get_creds(scopes):
     """
@@ -117,7 +118,8 @@ def enviar_mensaje(servicio, remitente, mensaje):
         st.error(f"Ocurrió un error al enviar el correo: {e}")
         return None
 
-def generar_pdf_certificado(nombre_archivo, nombre_completo, codigo_confirmacion, nombre_analista):
+def generar_pdf_certificado(nombre_completo, codigo_confirmacion, nombre_analista):
+    """Genera un PDF de certificado en memoria y retorna su contenido."""
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     
@@ -131,13 +133,14 @@ def generar_pdf_certificado(nombre_archivo, nombre_completo, codigo_confirmacion
     buffer.seek(0)
     return buffer.getvalue()
 
-def envia_mail(mail_value, nombre_completo, codigo, files_dict, nombre_analista):
+def envia_mail(mail_value, nombre_completo, codigo, nombre_analista, adjuntos=None):
+    """Envía un correo electrónico con o sin adjuntos."""
     try:
         service_gmail = autenticar_gmail()
         if not service_gmail:
             return False
             
-        remitente = 'me'  # La cuenta que estás autentando
+        remitente = 'me'  # La cuenta que estás autenticando
         asunto = 'Confirmación de entrega de imágenes'
         
         cuerpo = f"""
@@ -146,14 +149,10 @@ def envia_mail(mail_value, nombre_completo, codigo, files_dict, nombre_analista)
         <body>
             <p>Hola {nombre_completo},</p>
             <p>El código para terminar el proceso es: <b>{codigo}</b></p>
-            <p>Se adjunta un certificado de la entrega.</p>
+            {"<p>Se adjunta un certificado de la entrega.</p>" if adjuntos else ""}
         </body>
         </html>
         """
-        
-        # Generar el PDF
-        pdf_content = generar_pdf_certificado("certificado.pdf", nombre_completo, codigo, nombre_analista)
-        adjuntos = [{'nombre': 'certificado.pdf', 'contenido': pdf_content}]
         
         mensaje = crear_mensaje(remitente, mail_value, asunto, cuerpo, adjuntos)
         enviar_mensaje(service_gmail, remitente, mensaje)
@@ -162,8 +161,9 @@ def envia_mail(mail_value, nombre_completo, codigo, files_dict, nombre_analista)
         st.error(f"No se pudo enviar el correo: {e}")
         return False
 
-# --- Función para crear el PDF (NUEVA) ---
+# --- Función para crear el PDF de reporte ---
 def crear_pdf(selected_row):
+    """Crea el PDF de reporte y retorna su ruta."""
     file_path = f"reporte_{selected_row.get('ID-partido', 'sin_id')}.pdf"
     c = canvas.Canvas(file_path, pagesize=letter)
     c.drawString(100, 750, "Reporte de Confirmación de Entrega")
@@ -176,8 +176,9 @@ def crear_pdf(selected_row):
     c.save()
     return file_path
 
-# --- Función subir_a_drive (INTEGRADA) ---
+# --- Función para subir el PDF a Drive ---
 def subir_a_drive(file_path, folder_id):
+    """Sube un archivo a Google Drive."""
     servicio_drive = autenticar_drive()
     if not servicio_drive:
         return False
@@ -195,7 +196,6 @@ def subir_a_drive(file_path, folder_id):
 def listar_archivos_en_drive(folder_id):
     """
     Función placeholder para listar archivos de Drive.
-    Deberás implementar la lógica aquí.
     """
     st.info("La función 'listar_archivos_en_drive' no está implementada.")
     return None
@@ -219,8 +219,24 @@ tabla_entregas = conectar_a_airtable()
 if st.session_state.get("registro_actualizado"):
     st.subheader("Introduce el código enviado al analista")
     codigo_ingresado = st.text_input("Código")
-    if codigo_ingresado:
-        st.success(f"Código ingresado: {codigo_ingresado}")
+    
+    if st.button("Envío"):
+        if codigo_ingresado == str(st.session_state.get("codigo_generado")):
+            st.success("Código correcto. Procediendo a generar y subir el PDF.")
+            
+            # Obtener la fila seleccionada de nuevo (o guardarla en session_state)
+            if 'selected_row' in st.session_state:
+                selected_row = st.session_state['selected_row']
+                
+                # Generar el PDF y subirlo a Drive
+                pdf_file_path = crear_pdf(selected_row)
+                if pdf_file_path and subir_a_drive(pdf_file_path, DRIVE_FOLDER_ID):
+                    if os.path.exists(pdf_file_path):
+                        os.remove(pdf_file_path)
+            else:
+                st.error("No se pudo recuperar el registro. Por favor, reinicia el proceso.")
+        else:
+            st.error("Código incorrecto. Vuelve a intentarlo.")
     st.stop()
 
 # --- Pantalla principal ---
@@ -231,6 +247,9 @@ if not tabla_entregas.empty:
 
     if not df_filtrado.empty:
         selected_row = df_filtrado.iloc[0]
+        # Guardar la fila seleccionada en el estado de la sesión para usarla después
+        st.session_state['selected_row'] = selected_row
+        
         with st.form("update_form"):
             analista_value = selected_row.get('Analista', '')
             sin_analista = False
@@ -257,16 +276,6 @@ if not tabla_entregas.empty:
         if submitted:
             if verificado:
                 random_code = random.randint(100000, 999999)
-                
-                # Llamada a la función crear_pdf
-                pdf_file_path = crear_pdf(selected_row)
-                drive_folder_id = "1yNFgOvRclge1SY9QtvnD980f3-4In_hs"
-                
-                # Subir a Drive solo si el PDF se ha creado con éxito
-                if pdf_file_path and subir_a_drive(pdf_file_path, drive_folder_id):
-                    # Solo eliminar el archivo local si se subió correctamente
-                    if os.path.exists(pdf_file_path):
-                        os.remove(pdf_file_path)
 
                 # Actualizar Airtable
                 at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
@@ -288,10 +297,12 @@ if not tabla_entregas.empty:
                         st.error("No hay correo válido para enviar el código.")
                     else:
                         try:
-                            if envia_mail(mail_value, selected_row.get('Nombre_Completo', ''), str(random_code), {}, analista_value):
+                            # Envía el correo SÓLO con el código (sin adjuntos)
+                            if envia_mail(mail_value, selected_row.get('Nombre_Completo', ''), str(random_code), analista_value):
                                 st.success(f"Correo enviado a {mail_value}")
+                                # Guardar estado para mostrar la pantalla de código
                                 st.session_state["registro_actualizado"] = True
-                                st.session_state["codigo_generado"] = random_code
+                                st.session_state["codigo_generado"] = str(random_code)
                                 st.rerun()
                         except Exception as e:
                             st.error(f"No se pudo enviar el correo: {e}")
@@ -307,7 +318,8 @@ else:
 # --- Archivos en Drive ---
 st.subheader("Archivos en la carpeta de Google Drive")
 if st.button("Listar archivos de la carpeta de Drive"):
-    listar_archivos_en_drive("1yNFgOvRclge1SY9QtvnD980f3-4In_hs")
+    listar_archivos_en_drive(DRIVE_FOLDER_ID)
+
 
 
 
