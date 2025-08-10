@@ -148,7 +148,7 @@ def envia_mail(mail_value, nombre_completo, codigo, nombre_analista, adjuntos=No
         <head></head>
         <body>
             <p>Hola {nombre_completo},</p>
-            <p>El código para terminar el proceso es: <b>{codigo}</b></p>
+            {"<p>El código para terminar el proceso es: <b>" + codigo + "</b></p>" if codigo else ""}
             {"<p>Se adjunta un certificado de la entrega.</p>" if adjuntos else ""}
         </body>
         </html>
@@ -221,20 +221,45 @@ if st.session_state.get("registro_actualizado"):
     codigo_ingresado = st.text_input("Código")
     
     if st.button("Envío"):
-        if codigo_ingresado == str(st.session_state.get("codigo_generado")):
-            st.success("Código correcto. Procediendo a generar y subir el PDF.")
+        if codigo_ingresado == st.session_state.get("codigo_generado"):
+            st.success("Código correcto. Procediendo con el envío del PDF.")
             
-            # Obtener la fila seleccionada de nuevo (o guardarla en session_state)
             if 'selected_row' in st.session_state:
                 selected_row = st.session_state['selected_row']
+                mail_value = selected_row.get('Mail', '')
+                analista_value = selected_row.get('Analista', '')
                 
-                # Generar el PDF y subirlo a Drive
+                # Generar el PDF de reporte y subirlo a Drive
                 pdf_file_path = crear_pdf(selected_row)
+                
                 if pdf_file_path and subir_a_drive(pdf_file_path, DRIVE_FOLDER_ID):
+                    # Preparar el adjunto para el correo
+                    with open(pdf_file_path, "rb") as f:
+                        adjuntos = [{'nombre': os.path.basename(pdf_file_path), 'contenido': f.read()}]
+                    
+                    # Enviar el PDF por mail y actualizar Airtable
+                    if mail_value and envia_mail(mail_value, selected_row.get('Nombre_Completo', ''), "", analista_value, adjuntos):
+                        st.success("Correo con PDF enviado correctamente.")
+                        # Actualizar Airtable
+                        at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
+                        record_id = selected_row.get('Rec')
+                        if record_id:
+                            fields_to_update = {'Verificado': 'Verificado'}
+                            at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
+                            st.success("Registro de Airtable actualizado a 'Verificado'.")
+                        else:
+                            st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
+                            
+                    # Eliminar el archivo local
                     if os.path.exists(pdf_file_path):
                         os.remove(pdf_file_path)
             else:
                 st.error("No se pudo recuperar el registro. Por favor, reinicia el proceso.")
+                
+            # Limpiar la sesión para volver a la pantalla principal
+            if "registro_actualizado" in st.session_state:
+                del st.session_state["registro_actualizado"]
+            st.rerun()
         else:
             st.error("Código incorrecto. Vuelve a intentarlo.")
     st.stop()
@@ -319,6 +344,7 @@ else:
 st.subheader("Archivos en la carpeta de Google Drive")
 if st.button("Listar archivos de la carpeta de Drive"):
     listar_archivos_en_drive(DRIVE_FOLDER_ID)
+
 
 
 
