@@ -176,22 +176,22 @@ def crear_pdf(selected_row):
     c.save()
     return file_path
 
-# --- Función para subir el PDF a Drive ---
+# --- Función para subir el PDF a Drive (modificada) ---
 def subir_a_drive(file_path, folder_id):
-    """Sube un archivo a Google Drive."""
+    """Sube un archivo a Google Drive y devuelve su enlace de descarga."""
     servicio_drive = autenticar_drive()
     if not servicio_drive:
-        return False
+        return None
 
     file_metadata = {'name': os.path.basename(file_path), 'parents': [folder_id]}
     media = MediaFileUpload(file_path, mimetype='application/pdf')
     try:
-        archivo = servicio_drive.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        archivo = servicio_drive.files().create(body=file_metadata, media_body=media, fields='id, webContentLink').execute()
         st.success(f"Archivo subido a Google Drive. ID: {archivo.get('id')}")
-        return True
+        return archivo.get('webContentLink') # Retorna el enlace de descarga directa
     except Exception as e:
         st.error(f"Error al subir el archivo a Google Drive: {e}")
-        return False
+        return None
 
 def listar_archivos_en_drive(folder_id):
     """
@@ -231,8 +231,9 @@ if st.session_state.get("registro_actualizado"):
                 
                 # Generar el PDF de reporte y subirlo a Drive
                 pdf_file_path = crear_pdf(selected_row)
+                pdf_url = subir_a_drive(pdf_file_path, DRIVE_FOLDER_ID)
                 
-                if pdf_file_path and subir_a_drive(pdf_file_path, DRIVE_FOLDER_ID):
+                if pdf_file_path and pdf_url:
                     # Preparar el adjunto para el correo
                     with open(pdf_file_path, "rb") as f:
                         adjuntos = [{'nombre': os.path.basename(pdf_file_path), 'contenido': f.read()}]
@@ -244,9 +245,12 @@ if st.session_state.get("registro_actualizado"):
                         at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                         record_id = selected_row.get('Rec')
                         if record_id:
-                            fields_to_update = {'Verificado': 'Verificado'}
+                            fields_to_update = {
+                                'Verificado': 'Verificado',
+                                'PDF': [{'url': pdf_url}]
+                            }
                             at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
-                            st.success("Registro de Airtable actualizado a 'Verificado'.")
+                            st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
                         else:
                             st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
                             
@@ -344,6 +348,8 @@ else:
 st.subheader("Archivos en la carpeta de Google Drive")
 if st.button("Listar archivos de la carpeta de Drive"):
     listar_archivos_en_drive(DRIVE_FOLDER_ID)
+
+
 
 
 
