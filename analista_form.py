@@ -323,8 +323,8 @@ if st.session_state.get("registro_actualizado"):
             if 'selected_row' in st.session_state:
                 selected_row = st.session_state['selected_row']
                 mail_value = selected_row.get('Mail', '')
-                analista_value = selected_row.get('Analista', '')
-                #analista_value = analista_value_input
+                #analista_value = selected_row.get('Analista', '')
+                analista_value = analista_value_input
                 
                 # Generar el PDF de reporte con la nueva función
                 with st.spinner("Generando PDF y subiendo a Google Drive..."):
@@ -449,6 +449,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
