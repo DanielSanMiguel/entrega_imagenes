@@ -364,7 +364,7 @@ if not tabla_entregas.empty:
         
         with st.form("update_form"):
             analista_value_input = st.text_input("Analista", value=selected_row.get('Analista', ''))
-            st.text_input("Piloto", value=selected_row.get('Piloto', 'N/A'), disabled=True)
+            st.text_input("Piloto", value=selected_row.get('Piloto'[0], 'N/A'), disabled=True)
             st.text_input("Fecha Partido", value=selected_row.get('Fecha partido', 'N/A'), disabled=True)
             mail_value_input = st.text_input("Mail", value=selected_row.get('Mail', ''))
             
@@ -413,4 +413,5 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
