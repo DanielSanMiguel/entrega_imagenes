@@ -363,10 +363,10 @@ if not tabla_entregas.empty:
         st.session_state['selected_row'] = selected_row
         
         with st.form("update_form"):
-            analista_value_input = st.text_input("Analista", value=selected_row.get('Analista'[0], ''))
+            analista_value_input = st.text_input("Analista", value=selected_row.get('Analista', ''))
             st.text_input("Piloto", value=selected_row.get('Piloto', 'N/A'), disabled=True)
             st.text_input("Fecha Partido", value=selected_row.get('Fecha partido', 'N/A'), disabled=True)
-            mail_value_input = st.text_input("Mail", value=selected_row.get('Mail'[0], ''))
+            mail_value_input = st.text_input("Mail", value=selected_row.get('Mail', ''))
             
             verificado = st.checkbox("Marcar como Verificado")
             submitted = st.form_submit_button("Actualizar Registro")
@@ -413,6 +413,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
