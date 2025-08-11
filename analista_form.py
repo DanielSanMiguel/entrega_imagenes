@@ -305,7 +305,7 @@ airtable = Airtable(AIRTABLE_BASE_ID, 'analista', AIRTABLE_API_KEY)
 @st.cache_data(ttl=600)
 def conectar_a_airtable():
     at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
-    result_at_Table1 = at_Table1.get('vuelos_programados_dia', view='Grid view')
+    result_at_Table1 = at_Table1.get('Confirmaciones_de_Entrega', view='Grid view')
     airtable_rows = [r['fields'] for r in result_at_Table1['records']]
     df = pd.DataFrame(airtable_rows)
     return df
@@ -431,6 +431,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
