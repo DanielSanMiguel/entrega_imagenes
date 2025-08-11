@@ -8,6 +8,7 @@ Created on Sun Aug 10 09:38:21 2025
 import streamlit as st
 import pandas as pd
 import os
+import re
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -253,6 +254,19 @@ def crear_pdf_con_template(selected_row, analista_value):
 
     return file_path
 
+def limpiar_caracteres(texto):
+  """
+  Elimina comillas (simples y dobles) y corchetes ([], (), {}) de una cadena de texto.
+  
+  Args:
+    texto: La cadena de texto a limpiar.
+    
+  Returns:
+    La cadena de texto sin los caracteres especificados.
+  """
+  caracteres_a_eliminar = "[\"\'\[\]\(\)\{\}]"
+  return re.sub(caracteres_a_eliminar, "", texto)
+
 # --- Function to upload PDF to Drive (modified) ---
 def subir_a_drive(file_path, folder_id):
     """
@@ -413,6 +427,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
