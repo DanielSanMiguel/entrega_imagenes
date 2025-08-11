@@ -345,7 +345,7 @@ if st.session_state.get("registro_actualizado"):
                                 'Verificado': 'Verificado',
                                 'PDF': [{'url': pdf_url}]
                             }
-                            at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
+                            at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                             st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
                             
                             conectar_a_airtable.clear()
@@ -405,7 +405,7 @@ if not tabla_entregas.empty:
                             'Mail(Form)': mail_value_input,
                             'Verificado': 'Pendiente',
                         }
-                        at_Table1.update('vuelos_programados_dia', record_id, fields_to_update)
+                        at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
 
                         if not mail_value_input or pd.isna(mail_value_input):
                             st.error("No hay correo válido para enviar el código.")
@@ -431,6 +431,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
