@@ -220,7 +220,7 @@ def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
     </head>
     <body>
         <div class="header">
-            <img src="./img/logo.png" alt="Logo de la empresa" class="logo"> <h1>Reporte de Confirmación de Entrega</h1>
+            <img src="./img/logo.png" alt="Logo de la empresa" style="max-width: 100px; height: auto;"> <h1>Reporte de Confirmación de Entrega</h1>
         </div>
         <div class="content">
             <div class="field-row">
@@ -438,6 +438,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
