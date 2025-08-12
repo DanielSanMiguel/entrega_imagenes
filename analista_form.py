@@ -188,89 +188,161 @@ def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
     """
     Generates a report PDF using an HTML template and Jinja2.
     """
+    # 1. Define la ruta de la imagen
     logo_path = "./img/logo.png"
-    html_template = """
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <title>Reporte de Confirmación de Entrega</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                margin: 40px;
-                color: #333;
-            }
-            .header {
-                text-align: center;
-                border-bottom: 2px solid #007bff;
-                padding-bottom: 20px;
-                margin-bottom: 30px;
-            }
-            .header h1 {
-                color: #007bff;
-            }
-            .content {
-                line-height: 1.6;
-            }
-            .field-row {
-                margin-bottom: 10px;
-            }
-            .field-name {
-                font-weight: bold;
-                color: #555;
-            }
-            .field-value {
-                margin-left: 10px;
-            }
-            .logo {
-                width: 320px; /* Ajusta el tamaño según sea necesario */
-                margin-bottom: 20px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <img src="data:image/png;base64,{base64_logo}" alt="Logo de la empresa" class="logo">
-            <h1>Reporte de Confirmación de Entrega</h1>
-        </div>
-        <div class="content">
-            <div class="field-row">
-                <span class="field-name">ID-partido:</span>
-                <span class="field-value">{{ row['ID-partido'] }}</span>
-            </div>
-            <div class="field-row">
-                <span class="field-name">Analista:</span>
-                <span class="field-value">{{ analista }}</span>
-            </div>
-            <div class="field-row">
-                <span class="field-name">Piloto:</span>
-                <span class="field-value">{{ row['Piloto'] }}</span>
-            </div>
-            <div class="field-row">
-                <span class="field-name">Fecha Partido:</span>
-                <span class="field-value">{{ row['Fecha partido'] }}</span>
-            </div>
-            <div class="field-row">
-                <span class="field-name">Código Único:</span>
-                <span class="field-value">{{ codigo }}</span>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
     
-    # El resto de la función sigue igual...
-    template = Template(html_template)
-    html_out = template.render(row=selected_row, analista=analista_value, codigo=codigo_unico)
-    pdf_content = HTML(string=html_out).write_pdf()
+    # 2. Codifica la imagen a Base64
+    base64_logo = image_to_base64(logo_path)
+    
+    # 3. Usa la cadena Base64 en el HTML
+    if base64_logo:
+        html_template = f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Reporte de Confirmación de Entrega</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    margin: 40px;
+                    color: #333;
+                }}
+                .header {{
+                    text-align: center;
+                    border-bottom: 2px solid #007bff;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }}
+                .header h1 {{
+                    color: #007bff;
+                }}
+                .content {{
+                    line-height: 1.6;
+                }}
+                .field-row {{
+                    margin-bottom: 10px;
+                }}
+                .field-name {{
+                    font-weight: bold;
+                    color: #555;
+                }}
+                .field-value {{
+                    margin-left: 10px;
+                }}
+                .logo {{
+                    width: 150px; /* Ajusta el tamaño según sea necesario */
+                    margin-bottom: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <img src="data:image/png;base64,{base64_logo}" alt="Logo de la empresa" class="logo">
+                <h1>Reporte de Confirmación de Entrega</h1>
+            </div>
+            <div class="content">
+                <div class="field-row">
+                    <span class="field-name">ID-partido:</span>
+                    <span class="field-value">{selected_row['ID-partido']}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Analista:</span>
+                    <span class="field-value">{analista_value}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Piloto:</span>
+                    <span class="field-value">{selected_row['Piloto']}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Fecha Partido:</span>
+                    <span class="field-value">{selected_row['Fecha partido']}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Código Único:</span>
+                    <span class="field-value">{codigo_unico}</span>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+    else:
+        # Si no se encuentra el logo, usa una versión sin imagen
+        html_template = f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Reporte de Confirmación de Entrega</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    margin: 40px;
+                    color: #333;
+                }}
+                .header {{
+                    text-align: center;
+                    border-bottom: 2px solid #007bff;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }}
+                .header h1 {{
+                    color: #007bff;
+                }}
+                .content {{
+                    line-height: 1.6;
+                }}
+                .field-row {{
+                    margin-bottom: 10px;
+                }}
+                .field-name {{
+                    font-weight: bold;
+                    color: #555;
+                }}
+                .field-value {{
+                    margin-left: 10px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Reporte de Confirmación de Entrega</h1>
+            </div>
+            <div class="content">
+                <div class="field-row">
+                    <span class="field-name">ID-partido:</span>
+                    <span class="field-value">{selected_row['ID-partido']}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Analista:</span>
+                    <span class="field-value">{analista_value}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Piloto:</span>
+                    <span class="field-value">{selected_row['Piloto']}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Fecha Partido:</span>
+                    <span class="field-value">{selected_row['Fecha partido']}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Código Único:</span>
+                    <span class="field-value">{codigo_unico}</span>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+    # En este caso no usamos Jinja2.Template porque el string ya es un f-string
+    # HTML(string=html_out).write_pdf()
+    pdf_content = HTML(string=html_template).write_pdf()
     
     file_path = f"reporte_{selected_row.get('ID-partido', 'sin_id')}.pdf"
     with open(file_path, "wb") as f:
         f.write(pdf_content)
 
     return file_path
-
 def limpiar_caracteres(texto):
   """
   Elimina comillas (simples y dobles) y corchetes ([], (), {}) de una cadena de texto.
@@ -450,6 +522,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
