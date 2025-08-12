@@ -145,28 +145,44 @@ def enviar_mensaje(servicio, remitente, mensaje):
         st.error(f"Ocurrió un error al enviar el correo: {e}")
         return None
 
-def envia_mail(mail_value, nombre_completo, codigo, nombre_analista, adjuntos=None):
-    """Sends an email with or without attachments."""
+def envia_mail(mail_value, nombre_completo_piloto, codigo, nombre_analista, partido_id, fecha_partido):
+    """
+    Envía un correo electrónico al analista con el código único y los detalles legales.
+    """
     try:
         service_gmail = autenticar_gmail()
         if not service_gmail:
             return False
             
         remitente = 'me'
-        asunto = 'Confirmación de entrega de imágenes'
+        asunto = f'[Fly-Fut] Confirmación de entrega de tarjeta SD - Partido: {partido_id}'
         
-        cuerpo = f"""
+        cuerpo_html = f"""
         <html>
         <head></head>
         <body>
-            <p>Hola {nombre_completo},</p>
-            {"<p>El código para terminar el proceso es: <b>" + codigo + "</b></p>" if codigo else ""}
-            {"<p>Se adjunta un certificado de la entrega.</p>" if adjuntos else ""}
+            <p>Hola <b>{nombre_analista}</b>,</p>
+            <p>El piloto <b>{nombre_completo_piloto}</b> ha iniciado la entrega física de la tarjeta SD con el material del partido <b>{partido_id}</b>, jugado el <b>{fecha_partido}</b>.</p>
+            <p>Para completar este protocolo de seguridad y asegurar la cadena de custodia del material, por favor, facilita el siguiente código único al piloto cuando recibas la tarjeta:</p>
+
+            <h2 style="text-align: center; color: #007bff; border: 2px solid #007bff; padding: 10px; font-family: monospace;">{codigo}</h2>
+
+            <hr style="border: 0; border-top: 1px solid #ccc; margin: 30px 0;">
+
+            <h4>Declaración de No Repudio y Validez Legal</h4>
+            <p>Al facilitar este código al piloto, usted está confirmando la recepción y aceptación de la custodia de la tarjeta SD. Esta acción genera un registro digital con fecha y hora, que certifica la entrega del material.</p>
+            <p>Esta confirmación tiene carácter de <b>firma electrónica simple</b> y garantiza la integridad de la transacción, impidiendo que cualquiera de las partes pueda repudiar la entrega posteriormente. Este registro se almacena de forma segura en nuestra base de datos para futuras auditorías.</p>
+            <p>Si tienes alguna pregunta o incidencia, por favor, contacta con nuestro departamento legal en <a href="mailto:legal@fly-fut.com">legal@fly-fut.com</a>.</p>
+
+            <p>Gracias por tu colaboración.</p>
+
+            <p>Atentamente,<br>
+            El equipo de Fly-Fut</p>
         </body>
         </html>
         """
         
-        mensaje = crear_mensaje(remitente, mail_value, asunto, cuerpo, adjuntos)
+        mensaje = crear_mensaje(remitente, mail_value, asunto, cuerpo_html)
         enviar_mensaje(service_gmail, remitente, mensaje)
         return True
     except Exception as e:
@@ -494,22 +510,32 @@ if not tabla_entregas.empty:
                             'Analista(Form)': analista_value_input,
                             'Mail(Form)': mail_value_input,
                             'Verificado': 'Pendiente',
-                            'Codigo_unico': str(random_code), # <-- LÍNEA AÑADIDA
+                            'Codigo_unico': str(random_code),
                         }
                         at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
+                        
+                        st.success("Registro de Airtable actualizado a 'Pendiente'.")
 
                         if not mail_value_input or pd.isna(mail_value_input):
                             st.error("No hay correo válido para enviar el código.")
                         else:
                             try:
-                                if envia_mail(mail_value_input, selected_row.get('Nombre_Completo', ''), str(random_code), analista_value_input):
-                                    st.success(f"Correo enviado a {mail_value_input}")
+                                if envia_mail(
+                                    mail_value_input, 
+                                    selected_row.get('Piloto', ''), 
+                                    str(random_code), 
+                                    analista_value_input, 
+                                    selected_row.get('ID-partido', 'sin_id'),
+                                    selected_row.get('Fecha partido', 'sin fecha')
+                                ):
+                                    st.success(f"Correo enviado a {mail_value_input} con el código de confirmación.")
                                     
                                     # Save state for the code screen and for the PDF generation
                                     st.session_state["registro_actualizado"] = True
                                     st.session_state["codigo_generado"] = str(random_code)
                                     st.session_state["mail_value_for_pdf"] = mail_value_input
                                     st.session_state["analista_value_for_pdf"] = analista_value_input
+                                    st.session_state["selected_row"] = selected_row # Persist the selected row
 
                                     st.rerun()
                             except Exception as e:
@@ -517,11 +543,12 @@ if not tabla_entregas.empty:
                     else:
                         st.error("No se pudo obtener el ID del registro.")
             else:
-                st.warning("Debes marcar 'Marcar como Verificado'.")
+                st.warning("Debes marcar 'Marcar como Verificado' para iniciar el proceso.")
     else:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
