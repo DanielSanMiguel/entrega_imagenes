@@ -173,11 +173,22 @@ def envia_mail(mail_value, nombre_completo, codigo, nombre_analista, adjuntos=No
         st.error(f"No se pudo enviar el correo: {e}")
         return False
 
+def image_to_base64(image_path):
+    """Convierte una imagen local en una cadena Base64."""
+    import base64
+    try:
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+    except FileNotFoundError:
+        st.error(f"Error: No se encontró la imagen en la ruta {image_path}")
+        return None
+
 # --- IMPROVED PDF CREATION FUNCTION USING HTML TEMPLATE ---
 def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
     """
     Generates a report PDF using an HTML template and Jinja2.
     """
+    logo_path = "./img/logo.png"
     html_template = """
     <!DOCTYPE html>
     <html lang="es">
@@ -220,7 +231,8 @@ def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
     </head>
     <body>
         <div class="header">
-            <img src="./img/logo.png" alt="Logo de la empresa" class="logo"> <h1>Reporte de Confirmación de Entrega</h1>
+            <img src="data:image/png;base64,{base64_logo}" alt="Logo de la empresa" class="logo">
+            <h1>Reporte de Confirmación de Entrega</h1>
         </div>
         <div class="content">
             <div class="field-row">
@@ -438,6 +450,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
