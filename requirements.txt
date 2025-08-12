@@ -7,3 +7,5 @@ google-auth-httplib2
 google-auth-oauthlib
 Jinja2
 WeasyPrint
+datetime
+hashlib
