@@ -255,3 +255,276 @@ def crear_pdf_con_template(selected_row, analista_value, codigo_unico, pdf_hash=
 
 # --- Function to upload PDF to Drive (modified) ---
 def subir_a_drive(file_path, folder_id):
+    """
+    Uploads a file to Google Drive, makes it public, and returns its view link.
+    """
+    servicio_drive = autenticar_drive()
+    if not servicio_drive:
+        return None
+
+    file_metadata = {'name': os.path.basename(file_path), 'parents': [folder_id]}
+    media = MediaFileUpload(file_path, mimetype='application/pdf')
+    try:
+        archivo = servicio_drive.files().create(body=file_metadata, media_body=media, fields='id, webContentLink').execute()
+        st.success(f"Archivo subido a Google Drive. ID: {archivo.get('id')}")
+
+        servicio_drive.permissions().create(
+            fileId=archivo.get('id'),
+            body={'type': 'anyone', 'role': 'reader'},
+            fields='id'
+        ).execute()
+
+        return archivo.get('webContentLink')
+    except Exception as e:
+        st.error(f"Error al subir o compartir el archivo: {e}")
+        return None
+
+def envia_mail(mail_value, nombre_completo_piloto, codigo, nombre_analista, partido_id, fecha_partido, tipo_evento):
+    """
+    Envía un correo electrónico al analista con el código único y los detalles legales.
+    """
+    try:
+        service_gmail = autenticar_gmail()
+        if not service_gmail:
+            return False
+            
+        remitente = 'me'
+
+        # CORRECCIÓN: Asegurar que tipo_evento sea una cadena de texto
+        if isinstance(tipo_evento, list) and tipo_evento:
+            tipo_evento_str = tipo_evento[0].capitalize()
+        else:
+            tipo_evento_str = str(tipo_evento).capitalize()
+
+        asunto = f'[Fly-Fut] Confirmación de entrega de tarjeta SD - {tipo_evento_str}: {partido_id}'
+        
+        cuerpo_html = f"""
+        <html>
+        <head></head>
+        <body>
+            <p>Hola <b>{nombre_analista}</b>,</p>
+            <p>El piloto <b>{nombre_completo_piloto}</b> ha iniciado la entrega física de la tarjeta SD con el material del **{tipo_evento_str}** <b>{partido_id}</b>, jugado el <b>{fecha_partido}</b>.</p>
+            <p>Para completar este protocolo de seguridad y asegurar la cadena de custodia del material, por favor, facilita el siguiente código único al piloto cuando recibas la tarjeta:</p>
+
+            <h2 style="text-align: center; color: #007bff; border: 2px solid #007bff; padding: 10px; font-family: monospace;">{codigo}</h2>
+
+            <hr style="border: 0; border-top: 1px solid #ccc; margin: 30px 0;">
+
+            <h4>Declaración de No Repudio y Validez Legal</h4>
+            <p>Al facilitar este código al piloto, usted está confirmando la recepción y aceptación de la custodia de la tarjeta SD. Esta acción genera un registro digital con fecha y hora, que certifica la entrega del material.</p>
+            <p>Esta confirmación tiene carácter de <b>firma electrónica simple</b> y garantiza la integridad de la transacción, impidiendo que cualquiera de las partes pueda repudiar la entrega posteriormente. Este registro se almacena de forma segura en nuestra base de datos para futuras auditorías.</p>
+            <p>Si tienes alguna pregunta o incidencia, por favor, contacta con nuestro departamento legal en <a href="mailto:legal@fly-fut.com">legal@fly-fut.com</a>.</p>
+
+            <p>Gracias por tu colaboración.</p>
+
+            <p>Atentamente,<br>
+            El equipo de Fly-Fut</p>
+        </body>
+        </html>
+        """
+        
+        mensaje = crear_mensaje(remitente, mail_value, asunto, cuerpo_html)
+        enviar_mensaje(service_gmail, remitente, mensaje)
+        return True
+    except Exception as e:
+        st.error(f"No se pudo enviar el correo: {e}")
+        return False
+    
+def enviar_pdf_confirmacion(mail_value, nombre_piloto, nombre_analista, partido_id, adjuntos=None):
+    """
+    Sends the final confirmation email with the attached PDF.
+    """
+    try:
+        service_gmail = autenticar_gmail()
+        if not service_gmail:
+            return False
+            
+        remitente = 'me'
+        asunto = f'Confirmación de entrega de imágenes - PDF adjunto para {partido_id}'
+        
+        cuerpo_html = f"""
+        <html>
+        <body>
+            <p>Hola {nombre_analista},</p>
+            <p>Se adjunta el certificado de confirmación de entrega del material del partido <b>{partido_id}</b>, que fue validado por el piloto <b>{nombre_piloto}</b>.</p>
+            <p>Este documento certifica la correcta transferencia del material según nuestro protocolo de seguridad.</p>
+            <p>Gracias por tu colaboración.</p>
+        </body>
+        </html>
+        """
+        
+        mensaje = crear_mensaje(remitente, mail_value, asunto, cuerpo_html, adjuntos)
+        enviar_mensaje(service_gmail, remitente, mensaje)
+        return True
+    except Exception as e:
+        st.error(f"Ocurrió un error al enviar el correo de confirmación: {e}")
+        return False
+
+# --- AIRTABLE API ---
+AIRTABLE_API_KEY = st.secrets["AIRTABLE_API_KEY"]
+AIRTABLE_BASE_ID = st.secrets["AIRTABLE_BASE_ID"]
+airtable = Airtable(AIRTABLE_BASE_ID, 'analista', AIRTABLE_API_KEY)
+
+
+# --- MAIN APPLICATION CODE (AUTHENTICATED USERS ONLY) ---
+
+@st.cache_data(ttl=600)
+def conectar_a_airtable():
+    at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
+    result_at_Table1 = at_Table1.get('Confirmaciones_de_Entrega', view='Grid view')
+    airtable_rows = [r['fields'] for r in result_at_Table1['records']]
+    df = pd.DataFrame(airtable_rows)
+    return df
+
+tabla_entregas = conectar_a_airtable()
+
+# --- Show code input screen if already updated ---
+if st.session_state.get("registro_actualizado"):
+    st.subheader("Introduce el código enviado al analista")
+    codigo_ingresado = st.text_input("Código")
+    
+    if st.button("Envío"):
+        if codigo_ingresado == st.session_state.get("codigo_generado"):
+            st.success("Código correcto. Procediendo con el envío del PDF.")
+            
+            if 'selected_row' in st.session_state:
+                selected_row = st.session_state['selected_row']
+                mail_value = st.session_state.get('mail_value_for_pdf', '')
+                analista_value = st.session_state.get('analista_value_for_pdf', '')
+                codigo_generado = st.session_state.get("codigo_generado")
+                
+                with st.spinner("Generando PDF y subiendo a Google Drive..."):
+                    # Generación de PDF en dos pasos para incluir el hash
+                    
+                    # 1. Creamos un PDF temporal sin el hash
+                    temp_pdf_path = crear_pdf_con_template(selected_row, analista_value, codigo_generado, pdf_hash="")
+                    
+                    # 2. Calculamos el hash de este PDF
+                    pdf_hash = calcular_hash_pdf(temp_pdf_path)
+                    
+                    # 3. Creamos el PDF final, esta vez con el hash
+                    final_pdf_path = crear_pdf_con_template(selected_row, analista_value, codigo_generado, pdf_hash=pdf_hash)
+                    
+                    # 4. Subimos el PDF final
+                    pdf_url = subir_a_drive(final_pdf_path, DRIVE_FOLDER_ID)
+                
+                if final_pdf_path and pdf_url:
+                    with open(final_pdf_path, "rb") as f:
+                        adjuntos = [{'nombre': os.path.basename(final_pdf_path), 'contenido': f.read()}]
+                    
+                    if mail_value and enviar_pdf_confirmacion(
+                        mail_value, 
+                        selected_row.get('Piloto', 'N/A'), 
+                        analista_value, 
+                        selected_row.get('ID-partido', 'sin_id'),
+                        adjuntos
+                    ):
+                        st.success("Correo con PDF enviado correctamente.")
+                        
+                        at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
+                        record_id = selected_row.get('Rec')
+                        if record_id:
+                            fields_to_update = {
+                                'Verificado': 'Verificado',
+                                'PDF': [{'url': pdf_url}]
+                            }
+                            at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
+                            st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
+                            
+                            conectar_a_airtable.clear()
+                        else:
+                            st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
+                            
+                    if os.path.exists(temp_pdf_path):
+                        os.remove(temp_pdf_path)
+                    if os.path.exists(final_pdf_path):
+                        os.remove(final_pdf_path)
+            else:
+                st.error("No se pudo recuperar el registro. Por favor, reinicia el proceso.")
+                
+            if "registro_actualizado" in st.session_state:
+                del st.session_state["registro_actualizado"]
+                if "mail_value_for_pdf" in st.session_state: del st.session_state["mail_value_for_pdf"]
+                if "analista_value_for_pdf" in st.session_state: del st.session_state["analista_value_for_pdf"]
+                st.rerun()
+        else:
+            st.error("Código incorrecto. Vuelve a intentarlo.")
+    st.stop()
+
+# --- Main screen ---
+if not tabla_entregas.empty:
+    partidos = tabla_entregas['ID-partido'].unique().tolist()
+    opcion_seleccionada = st.selectbox('Selecciona un ID de partido', options=partidos)
+    df_filtrado = tabla_entregas[tabla_entregas['ID-partido'] == opcion_seleccionada]
+
+    if not df_filtrado.empty:
+        selected_row = df_filtrado.iloc[0]
+        st.session_state['selected_row'] = selected_row
+        
+        with st.form("update_form"):
+            analista_list = selected_row.get('Analista', '')
+            analista_raw = limpiar_caracteres(analista_list[0])
+            analista_value_input = st.text_input("Analista", value=analista_raw)
+            st.text_input("Piloto", value=selected_row.get('Piloto', 'N/A'), disabled=True)
+            st.text_input("Fecha Partido", value=selected_row.get('Fecha partido', 'N/A'), disabled=True)
+            mail_list = selected_row.get('Mail', '')
+            mail_raw=limpiar_caracteres(mail_list[0])
+            mail_value_input = st.text_input("Mail", value=mail_raw)
+            
+            verificado = st.checkbox("Marcar como Verificado")
+            submitted = st.form_submit_button("Actualizar Registro")
+
+        if submitted:
+            if verificado:
+                if not analista_value_input or not mail_value_input:
+                    st.warning("El nombre del analista y el correo son obligatorios.")
+                else:
+                    random_code = random.randint(100000, 999999)
+
+                    # Update Airtable
+                    at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
+                    record_id = selected_row.get('Rec')
+                    if record_id:
+                        fields_to_update = {
+                            'Analista(Form)': analista_value_input,
+                            'Mail(Form)': mail_value_input,
+                            'Verificado': 'Pendiente',
+                            'Codigo_unico': str(random_code),
+                        }
+                        at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
+                        
+                        st.success("Registro de Airtable actualizado a 'Pendiente'.")
+
+                        if not mail_value_input or pd.isna(mail_value_input):
+                            st.error("No hay correo válido para enviar el código.")
+                        else:
+                            try:
+                                if envia_mail(
+                                    mail_value_input, 
+                                    selected_row.get('Piloto', ''), 
+                                    str(random_code), 
+                                    analista_value_input, 
+                                    selected_row.get('ID-partido', 'sin_id'),
+                                    selected_row.get('Fecha partido', 'sin fecha'),
+                                    selected_row.get('Tipo', 'evento')
+                                ):
+                                    st.success(f"Correo enviado a {mail_value_input} con el código de confirmación.")
+                                    
+                                    # Save state for the code screen and for the PDF generation
+                                    st.session_state["registro_actualizado"] = True
+                                    st.session_state["codigo_generado"] = str(random_code)
+                                    st.session_state["mail_value_for_pdf"] = mail_value_input
+                                    st.session_state["analista_value_for_pdf"] = analista_value_input
+                                    st.session_state["selected_row"] = selected_row
+
+                                    st.rerun()
+                            except Exception as e:
+                                st.error(f"No se pudo enviar el correo: {e}")
+                    else:
+                        st.error("No se pudo obtener el ID del registro.")
+            else:
+                st.warning("Debes marcar 'Marcar como Verificado' para iniciar el proceso.")
+    else:
+        st.warning("No se encontraron registros para el partido seleccionado.")
+else:
+    st.warning("No se encontraron datos en la tabla.")
