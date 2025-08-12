@@ -145,7 +145,7 @@ def enviar_mensaje(servicio, remitente, mensaje):
         st.error(f"Ocurrió un error al enviar el correo: {e}")
         return None
 
-def envia_mail(mail_value, nombre_completo_piloto, codigo, nombre_analista, partido_id, fecha_partido):
+def envia_mail(mail_value, nombre_completo_piloto, codigo, nombre_analista, partido_id, fecha_partido, tipo_evento):
     """
     Envía un correo electrónico al analista con el código único y los detalles legales.
     """
@@ -155,14 +155,14 @@ def envia_mail(mail_value, nombre_completo_piloto, codigo, nombre_analista, part
             return False
             
         remitente = 'me'
-        asunto = f'[Fly-Fut] Confirmación de entrega de tarjeta SD - Partido: {partido_id}'
+        asunto = f'[Fly-Fut] Confirmación de entrega de tarjeta SD - {tipo_evento.capitalize()}: {partido_id}'
         
         cuerpo_html = f"""
         <html>
         <head></head>
         <body>
             <p>Hola <b>{nombre_analista}</b>,</p>
-            <p>El piloto <b>{nombre_completo_piloto}</b> ha iniciado la entrega física de la tarjeta SD con el material del partido <b>{partido_id}</b>, jugado el <b>{fecha_partido}</b>.</p>
+            <p>El piloto <b>{nombre_completo_piloto}</b> ha iniciado la entrega física de la tarjeta SD con el material del **{tipo_evento}** <b>{partido_id}</b>, jugado el <b>{fecha_partido}</b>.</p>
             <p>Para completar este protocolo de seguridad y asegurar la cadena de custodia del material, por favor, facilita el siguiente código único al piloto cuando recibas la tarjeta:</p>
 
             <h2 style="text-align: center; color: #007bff; border: 2px solid #007bff; padding: 10px; font-family: monospace;">{codigo}</h2>
@@ -526,7 +526,8 @@ if not tabla_entregas.empty:
                                     str(random_code), 
                                     analista_value_input, 
                                     selected_row.get('ID-partido', 'sin_id'),
-                                    selected_row.get('Fecha partido', 'sin fecha')
+                                    selected_row.get('Fecha partido', 'sin fecha'),
+                                    selected_row.get('Tipo', 'evento') # Nuevo parámetro
                                 ):
                                     st.success(f"Correo enviado a {mail_value_input} con el código de confirmación.")
                                     
@@ -548,6 +549,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
