@@ -177,9 +177,6 @@ def envia_mail(mail_value, nombre_completo, codigo, nombre_analista, adjuntos=No
 def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
     """
     Generates a report PDF using an HTML template and Jinja2.
-    Returns the path of the created temporary PDF file.
-    
-    This function now receives the updated analyst name and the unique code.
     """
     html_template = """
     <!DOCTYPE html>
@@ -215,11 +212,15 @@ def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
             .field-value {
                 margin-left: 10px;
             }
+            .logo {
+                width: 150px; /* Ajusta el tamaño según sea necesario */
+                margin-bottom: 20px;
+            }
         </style>
     </head>
     <body>
         <div class="header">
-            <h1>Reporte de Confirmación de Entrega</h1>
+            <img src="./img/logo.ico" alt="Logo de la empresa" class="logo"> <h1>Reporte de Confirmación de Entrega</h1>
         </div>
         <div class="content">
             <div class="field-row">
@@ -246,12 +247,12 @@ def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
     </body>
     </html>
     """
-
+    
+    # El resto de la función sigue igual...
     template = Template(html_template)
     html_out = template.render(row=selected_row, analista=analista_value, codigo=codigo_unico)
-
     pdf_content = HTML(string=html_out).write_pdf()
-
+    
     file_path = f"reporte_{selected_row.get('ID-partido', 'sin_id')}.pdf"
     with open(file_path, "wb") as f:
         f.write(pdf_content)
@@ -437,6 +438,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
