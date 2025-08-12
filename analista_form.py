@@ -23,13 +23,14 @@ from email import encoders
 import mimetypes
 from io import BytesIO
 import random
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from airtable import Airtable
 
 # Importaciones para la mejora del PDF
 from jinja2 import Template
 from weasyprint import HTML, CSS
+import base64
+
+# Importación de Airtable
+from airtable import Airtable
 
 # --- App configuration ---
 st.set_page_config(page_title="Dashboard de Entregas", page_icon="✅", layout="wide")
@@ -145,57 +146,14 @@ def enviar_mensaje(servicio, remitente, mensaje):
         st.error(f"Ocurrió un error al enviar el correo: {e}")
         return None
 
-def envia_mail(mail_value, nombre_completo_piloto, codigo, nombre_analista, partido_id, fecha_partido, tipo_evento):
+def limpiar_caracteres(texto):
     """
-    Envía un correo electrónico al analista con el código único y los detalles legales.
+    Elimina comillas (simples y dobles) y corchetes ([], (), {}) de una cadena de texto.
     """
-    try:
-        service_gmail = autenticar_gmail()
-        if not service_gmail:
-            return False
-            
-        remitente = 'me'
+    caracteres_a_eliminar = "[\"\'\[\]\(\)\{\}]"
+    return re.sub(caracteres_a_eliminar, "", texto)
 
-        # CORRECCIÓN: Asegurar que tipo_evento sea una cadena de texto
-        if isinstance(tipo_evento, list) and tipo_evento:
-            tipo_evento_str = tipo_evento[0].capitalize()
-        else:
-            tipo_evento_str = str(tipo_evento).capitalize()
-
-        asunto = f'[Fly-Fut] Confirmación de entrega de tarjeta SD - {tipo_evento_str}: {partido_id}'
-        
-        cuerpo_html = f"""
-        <html>
-        <head></head>
-        <body>
-            <p>Hola <b>{nombre_analista}</b>,</p>
-            <p>El piloto <b>{nombre_completo_piloto}</b> ha iniciado la entrega física de la tarjeta SD con el material del **{tipo_evento_str}** <b>{partido_id}</b>, jugado el <b>{fecha_partido}</b>.</p>
-            <p>Para completar este protocolo de seguridad y asegurar la cadena de custodia del material, por favor, facilita el siguiente código único al piloto cuando recibas la tarjeta:</p>
-
-            <h2 style="text-align: center; color: #007bff; border: 2px solid #007bff; padding: 10px; font-family: monospace;">{codigo}</h2>
-
-            <hr style="border: 0; border-top: 1px solid #ccc; margin: 30px 0;">
-
-            <h4>Declaración de No Repudio y Validez Legal</h4>
-            <p>Al facilitar este código al piloto, usted está confirmando la recepción y aceptación de la custodia de la tarjeta SD. Esta acción genera un registro digital con fecha y hora, que certifica la entrega del material.</p>
-            <p>Esta confirmación tiene carácter de <b>firma electrónica simple</b> y garantiza la integridad de la transacción, impidiendo que cualquiera de las partes pueda repudiar la entrega posteriormente. Este registro se almacena de forma segura en nuestra base de datos para futuras auditorías.</p>
-            <p>Si tienes alguna pregunta o incidencia, por favor, contacta con nuestro departamento legal en <a href="mailto:legal@fly-fut.com">legal@fly-fut.com</a>.</p>
-
-            <p>Gracias por tu colaboración.</p>
-
-            <p>Atentamente,<br>
-            El equipo de Fly-Fut</p>
-        </body>
-        </html>
-        """
-        
-        mensaje = crear_mensaje(remitente, mail_value, asunto, cuerpo_html)
-        enviar_mensaje(service_gmail, remitente, mensaje)
-        return True
-    except Exception as e:
-        st.error(f"No se pudo enviar el correo: {e}")
-        return False
-
+# --- Función auxiliar para convertir imagen a Base64 ---
 def image_to_base64(image_path):
     """Convierte una imagen local en una cadena Base64."""
     import base64
@@ -357,8 +315,6 @@ def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
         </html>
         """
 
-    # En este caso no usamos Jinja2.Template porque el string ya es un f-string
-    # HTML(string=html_out).write_pdf()
     pdf_content = HTML(string=html_template).write_pdf()
     
     file_path = f"reporte_{selected_row.get('ID-partido', 'sin_id')}.pdf"
@@ -366,18 +322,6 @@ def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
         f.write(pdf_content)
 
     return file_path
-def limpiar_caracteres(texto):
-  """
-  Elimina comillas (simples y dobles) y corchetes ([], (), {}) de una cadena de texto.
-  
-  Args:
-    texto: La cadena de texto a limpiar.
-    
-  Returns:
-    La cadena de texto sin los caracteres especificados.
-  """
-  caracteres_a_eliminar = "[\"\'\[\]\(\)\{\}]"
-  return re.sub(caracteres_a_eliminar, "", texto)
 
 # --- Function to upload PDF to Drive (modified) ---
 def subir_a_drive(file_path, folder_id):
@@ -405,6 +349,86 @@ def subir_a_drive(file_path, folder_id):
         st.error(f"Error al subir o compartir el archivo: {e}")
         return None
 
+def envia_mail(mail_value, nombre_completo_piloto, codigo, nombre_analista, partido_id, fecha_partido, tipo_evento):
+    """
+    Envía un correo electrónico al analista con el código único y los detalles legales.
+    """
+    try:
+        service_gmail = autenticar_gmail()
+        if not service_gmail:
+            return False
+            
+        remitente = 'me'
+
+        # CORRECCIÓN: Asegurar que tipo_evento sea una cadena de texto
+        if isinstance(tipo_evento, list) and tipo_evento:
+            tipo_evento_str = tipo_evento[0].capitalize()
+        else:
+            tipo_evento_str = str(tipo_evento).capitalize()
+
+        asunto = f'[Fly-Fut] Confirmación de entrega de tarjeta SD - {tipo_evento_str}: {partido_id}'
+        
+        cuerpo_html = f"""
+        <html>
+        <head></head>
+        <body>
+            <p>Hola <b>{nombre_analista}</b>,</p>
+            <p>El piloto <b>{nombre_completo_piloto}</b> ha iniciado la entrega física de la tarjeta SD con el material del **{tipo_evento_str}** <b>{partido_id}</b>, jugado el <b>{fecha_partido}</b>.</p>
+            <p>Para completar este protocolo de seguridad y asegurar la cadena de custodia del material, por favor, facilita el siguiente código único al piloto cuando recibas la tarjeta:</p>
+
+            <h2 style="text-align: center; color: #007bff; border: 2px solid #007bff; padding: 10px; font-family: monospace;">{codigo}</h2>
+
+            <hr style="border: 0; border-top: 1px solid #ccc; margin: 30px 0;">
+
+            <h4>Declaración de No Repudio y Validez Legal</h4>
+            <p>Al facilitar este código al piloto, usted está confirmando la recepción y aceptación de la custodia de la tarjeta SD. Esta acción genera un registro digital con fecha y hora, que certifica la entrega del material.</p>
+            <p>Esta confirmación tiene carácter de <b>firma electrónica simple</b> y garantiza la integridad de la transacción, impidiendo que cualquiera de las partes pueda repudiar la entrega posteriormente. Este registro se almacena de forma segura en nuestra base de datos para futuras auditorías.</p>
+            <p>Si tienes alguna pregunta o incidencia, por favor, contacta con nuestro departamento legal en <a href="mailto:legal@fly-fut.com">legal@fly-fut.com</a>.</p>
+
+            <p>Gracias por tu colaboración.</p>
+
+            <p>Atentamente,<br>
+            El equipo de Fly-Fut</p>
+        </body>
+        </html>
+        """
+        
+        mensaje = crear_mensaje(remitente, mail_value, asunto, cuerpo_html)
+        enviar_mensaje(service_gmail, remitente, mensaje)
+        return True
+    except Exception as e:
+        st.error(f"No se pudo enviar el correo: {e}")
+        return False
+    
+def enviar_pdf_confirmacion(mail_value, nombre_piloto, nombre_analista, partido_id, adjuntos=None):
+    """
+    Sends the final confirmation email with the attached PDF.
+    """
+    try:
+        service_gmail = autenticar_gmail()
+        if not service_gmail:
+            return False
+            
+        remitente = 'me'
+        asunto = f'Confirmación de entrega de imágenes - PDF adjunto para {partido_id}'
+        
+        cuerpo_html = f"""
+        <html>
+        <body>
+            <p>Hola {nombre_analista},</p>
+            <p>Se adjunta el certificado de confirmación de entrega del material del partido <b>{partido_id}</b>, que fue validado por el piloto <b>{nombre_piloto}</b>.</p>
+            <p>Este documento certifica la correcta transferencia del material según nuestro protocolo de seguridad.</p>
+            <p>Gracias por tu colaboración.</p>
+        </body>
+        </html>
+        """
+        
+        mensaje = crear_mensaje(remitente, mail_value, asunto, cuerpo_html, adjuntos)
+        enviar_mensaje(service_gmail, remitente, mensaje)
+        return True
+    except Exception as e:
+        st.error(f"Ocurrió un error al enviar el correo de confirmación: {e}")
+        return False
 
 # --- AIRTABLE API ---
 AIRTABLE_API_KEY = st.secrets["AIRTABLE_API_KEY"]
@@ -435,20 +459,24 @@ if st.session_state.get("registro_actualizado"):
             
             if 'selected_row' in st.session_state:
                 selected_row = st.session_state['selected_row']
-                # Get mail and analyst values from session state
                 mail_value = st.session_state.get('mail_value_for_pdf', '')
                 analista_value = st.session_state.get('analista_value_for_pdf', '')
-                codigo_generado = st.session_state.get("codigo_generado")
                 
                 with st.spinner("Generando PDF y subiendo a Google Drive..."):
-                    pdf_file_path = crear_pdf_con_template(selected_row, analista_value, codigo_generado)
+                    pdf_file_path = crear_pdf_con_template(selected_row, analista_value, st.session_state["codigo_generado"])
                     pdf_url = subir_a_drive(pdf_file_path, DRIVE_FOLDER_ID)
                 
                 if pdf_file_path and pdf_url:
                     with open(pdf_file_path, "rb") as f:
                         adjuntos = [{'nombre': os.path.basename(pdf_file_path), 'contenido': f.read()}]
                     
-                    if mail_value and envia_mail(mail_value, selected_row.get('Nombre_Completo', ''), "", analista_value, adjuntos):
+                    if mail_value and enviar_pdf_confirmacion(
+                        mail_value, 
+                        selected_row.get('Piloto', 'N/A'), 
+                        analista_value, 
+                        selected_row.get('ID-partido', 'sin_id'),
+                        adjuntos
+                    ):
                         st.success("Correo con PDF enviado correctamente.")
                         
                         at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
@@ -556,6 +584,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
