@@ -169,13 +169,6 @@ def image_to_base64(image_path):
 
 # --- IMPROVED PDF CREATION FUNCTION USING HTML TEMPLATE ---
 def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
-    """
-    Genera un PDF con un template HTML que incluye:
-      - Logo (si está disponible, embebido en base64)
-      - Datos principales (ID-partido, Analista, Piloto, Fecha, Código único)
-      - Anexo Legal (texto estándar) con marca temporal UTC ISO y hash SHA256 del PDF final
-    """
-
     logo_path = "./img/logo.png"
     try:
         with open(logo_path, "rb") as image_file:
@@ -186,7 +179,7 @@ def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
 
     fecha_utc = datetime.utcnow().replace(microsecond=0).isoformat() + 'Z'
 
-    anexo_legal = f"""
+    anexo_legal = """
     <h3>Anexo Legal — Declaración de Recepción y Custodia del Material</h3>
     <p>La introducción del código único proporcionado por este sistema y la confirmación de
     su recepción constituyen una <strong>aceptación expresa</strong> de la entrega física
@@ -243,10 +236,16 @@ def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
     </html>
     """
 
-    pdf_content = HTML(string=html_template).write_pdf()
+    # 1. PDF preliminar
+    pdf_content_pre = HTML(string=html_template.replace("{{PDF_HASH}}", "CALCULANDO...")).write_pdf()
 
-    pdf_hash = hashlib.sha256(pdf_content).hexdigest()
-    html_with_hash = html_template.replace('{{PDF_HASH}}', pdf_hash)
+    # 2. Calcular hash del PDF preliminar
+    pdf_hash = hashlib.sha256(pdf_content_pre).hexdigest()
+
+    # 3. Reemplazar marcador por el hash real
+    html_with_hash = html_template.replace("{{PDF_HASH}}", pdf_hash)
+
+    # 4. PDF final con hash incrustado
     pdf_content_final = HTML(string=html_with_hash).write_pdf()
 
     safe_id = str(selected_row.get('ID-partido', 'sin_id')).replace(' ', '_')
@@ -517,6 +516,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
