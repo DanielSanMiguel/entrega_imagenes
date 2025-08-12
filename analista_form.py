@@ -155,14 +155,21 @@ def envia_mail(mail_value, nombre_completo_piloto, codigo, nombre_analista, part
             return False
             
         remitente = 'me'
-        asunto = f'[Fly-Fut] Confirmación de entrega de tarjeta SD - {tipo_evento.capitalize()}: {partido_id}'
+
+        # CORRECCIÓN: Asegurar que tipo_evento sea una cadena de texto
+        if isinstance(tipo_evento, list) and tipo_evento:
+            tipo_evento_str = tipo_evento[0].capitalize()
+        else:
+            tipo_evento_str = str(tipo_evento).capitalize()
+
+        asunto = f'[Fly-Fut] Confirmación de entrega de tarjeta SD - {tipo_evento_str}: {partido_id}'
         
         cuerpo_html = f"""
         <html>
         <head></head>
         <body>
             <p>Hola <b>{nombre_analista}</b>,</p>
-            <p>El piloto <b>{nombre_completo_piloto}</b> ha iniciado la entrega física de la tarjeta SD con el material del **{tipo_evento}** <b>{partido_id}</b>, jugado el <b>{fecha_partido}</b>.</p>
+            <p>El piloto <b>{nombre_completo_piloto}</b> ha iniciado la entrega física de la tarjeta SD con el material del **{tipo_evento_str}** <b>{partido_id}</b>, jugado el <b>{fecha_partido}</b>.</p>
             <p>Para completar este protocolo de seguridad y asegurar la cadena de custodia del material, por favor, facilita el siguiente código único al piloto cuando recibas la tarjeta:</p>
 
             <h2 style="text-align: center; color: #007bff; border: 2px solid #007bff; padding: 10px; font-family: monospace;">{codigo}</h2>
@@ -527,7 +534,7 @@ if not tabla_entregas.empty:
                                     analista_value_input, 
                                     selected_row.get('ID-partido', 'sin_id'),
                                     selected_row.get('Fecha partido', 'sin fecha'),
-                                    selected_row.get('Tipo', 'evento') # Nuevo parámetro
+                                    selected_row.get('Tipo', 'evento')
                                 ):
                                     st.success(f"Correo enviado a {mail_value_input} con el código de confirmación.")
                                     
@@ -536,7 +543,7 @@ if not tabla_entregas.empty:
                                     st.session_state["codigo_generado"] = str(random_code)
                                     st.session_state["mail_value_for_pdf"] = mail_value_input
                                     st.session_state["analista_value_for_pdf"] = analista_value_input
-                                    st.session_state["selected_row"] = selected_row # Persist the selected row
+                                    st.session_state["selected_row"] = selected_row
 
                                     st.rerun()
                             except Exception as e:
@@ -549,6 +556,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
