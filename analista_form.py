@@ -404,6 +404,7 @@ if not tabla_entregas.empty:
                             'Analista(Form)': analista_value_input,
                             'Mail(Form)': mail_value_input,
                             'Verificado': 'Pendiente',
+                            'Codigo_unico': str(random_code), # <-- LÍNEA AÑADIDA
                         }
                         at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
 
@@ -431,6 +432,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
