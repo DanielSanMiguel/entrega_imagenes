@@ -10,6 +10,7 @@ import pandas as pd
 import os
 import re
 import hashlib
+import datetime
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -173,77 +174,149 @@ def calcular_hash_pdf(pdf_path):
         return None
     
 # --- PDF CREATION FUNCTION ---
-def crear_pdf_con_template(selected_row, analista_value, codigo_unico, pdf_hash=""):
+def crear_pdf_con_template(selected_row, analista_value, codigo_unico, pdf_hash="", fecha_utc=""):
     """
     Generates a report PDF using an HTML template and Jinja2.
     """
     logo_path = "./img/logo.png"
     base64_logo = image_to_base64(logo_path)
     
-    # Renderizamos la plantilla con los datos
     if base64_logo:
-        html_template_string = f"""
+        html_template_string = """
         <!DOCTYPE html>
         <html lang="es">
         <head>
             <meta charset="UTF-8">
             <title>Reporte de Confirmación de Entrega</title>
             <style>
-                body {{ font-family: Arial, sans-serif; margin: 40px; color: #333; }}
-                .header {{ text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 30px; }}
-                .header h1 {{ color: #007bff; }}
-                .content {{ line-height: 1.6; }}
-                .field-row {{ margin-bottom: 10px; }}
-                .field-name {{ font-weight: bold; color: #555; }}
-                .field-value {{ margin-left: 10px; }}
-                .logo {{ width: 150px; margin-bottom: 20px; }}
-                .hash-section {{ margin-top: 50px; font-size: 10px; word-break: break-all; }}
+                body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+                .header { text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 30px; }
+                .header h1 { color: #007bff; }
+                .content { line-height: 1.6; }
+                .field-row { margin-bottom: 10px; }
+                .field-name { font-weight: bold; color: #555; }
+                .field-value { margin-left: 10px; }
+                .logo { width: 150px; margin-bottom: 20px; }
+                .legal-annex { margin-top: 50px; font-size: 11px; color: #666; }
+                .legal-annex h4 { font-size: 12px; text-align: center; color: #333; }
+                .hash-section { margin-top: 15px; font-size: 10px; word-break: break-all; }
             </style>
         </head>
         <body>
             <div class="header">
-                <img src="data:image/png;base64,{base64_logo}" alt="Logo de la empresa" class="logo">
+                <img src="data:image/png;base64,{{ base64_logo }}" alt="Logo de la empresa" class="logo">
                 <h1>Reporte de Confirmación de Entrega</h1>
             </div>
             <div class="content">
                 <div class="field-row">
                     <span class="field-name">ID-partido:</span>
-                    <span class="field-value">{{{{ row['ID-partido'] }}}}</span>
+                    <span class="field-value">{{ row['ID-partido'] }}</span>
                 </div>
                 <div class="field-row">
                     <span class="field-name">Analista:</span>
-                    <span class="field-value">{{{{ analista }}}}</span>
+                    <span class="field-value">{{ analista }}</span>
                 </div>
                 <div class="field-row">
                     <span class="field-name">Piloto:</span>
-                    <span class="field-value">{{{{ row['Piloto'] }}}}</span>
+                    <span class="field-value">{{ row['Piloto'] }}</span>
                 </div>
                 <div class="field-row">
                     <span class="field-name">Fecha Partido:</span>
-                    <span class="field-value">{{{{ row['Fecha partido'] }}}}</span>
+                    <span class="field-value">{{ row['Fecha partido'] }}</span>
                 </div>
                 <div class="field-row">
                     <span class="field-name">Código Único:</span>
-                    <span class="field-value">{{{{ codigo }}}}</span>
+                    <span class="field-value">{{ codigo }}</span>
+                </div>
+            </div>
+            <hr>
+            <div class="legal-annex">
+                <h4>Anexo Legal — Declaración de Recepción y Custodia del Material</h4>
+                <p>La introducción del código único proporcionado por este sistema y la confirmación de su
+                recepción constituyen una aceptación expresa de la entrega física del material
+                identificado en este documento, así como la asunción de su custodia.</p>
+                <p>Esta confirmación constituye una firma electrónica simple y queda asociada a la identidad
+                del receptor, el código único, la fecha y hora de confirmación y la descripción del material
+                entregado. El registro se conserva para fines de auditoría y resolución de disputas.</p>
+                <p>Fly-Fut S.L. se reserva el derecho a presentar esta documentación como prueba ante
+                cualquier autoridad administrativa o judicial competente.</p>
+                <div class="field-row hash-section">
+                    <span class="field-name">Fecha/hora UTC de generación:</span>
+                    <span class="field-value">{{ fecha_utc }}</span>
                 </div>
                 <div class="field-row hash-section">
                     <span class="field-name">Hash (SHA256) del PDF final:</span>
-                    <span class="field-value">{{{{ pdf_hash }}}}</span>
+                    <span class="field-value">{{ pdf_hash }}</span>
                 </div>
             </div>
         </body>
         </html>
         """
     else:
-        html_template_string = f"""
+        # Template sin el logo...
+        html_template_string = """
         <!DOCTYPE html>
         <html lang="es">
-        ... ...
+        <head>
+            <meta charset="UTF-8">
+            <title>Reporte de Confirmación de Entrega</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+                .header { text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 30px; }
+                .header h1 { color: #007bff; }
+                .content { line-height: 1.6; }
+                .field-row { margin-bottom: 10px; }
+                .field-name { font-weight: bold; color: #555; }
+                .field-value { margin-left: 10px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Reporte de Confirmación de Entrega</h1>
+            </div>
+            <div class="content">
+                <div class="field-row">
+                    <span class="field-name">ID-partido:</span>
+                    <span class="field-value">{{ row['ID-partido'] }}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Analista:</span>
+                    <span class="field-value">{{ analista }}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Piloto:</span>
+                    <span class="field-value">{{ row['Piloto'] }}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Fecha Partido:</span>
+                    <span class="field-value">{{ row['Fecha partido'] }}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-name">Código Único:</span>
+                    <span class="field-value">{{ codigo }}</span>
+                </div>
+                <div class="field-row hash-section">
+                    <span class="field-name">Fecha/hora UTC de generación:</span>
+                    <span class="field-value">{{ fecha_utc }}</span>
+                </div>
+                <div class="field-row hash-section">
+                    <span class="field-name">Hash (SHA256) del PDF final:</span>
+                    <span class="field-value">{{ pdf_hash }}</span>
+                </div>
+            </div>
+        </body>
         </html>
         """
 
     template = Template(html_template_string)
-    html_out = template.render(row=selected_row, analista=analista_value, codigo=codigo_unico, pdf_hash=pdf_hash)
+    html_out = template.render(
+        row=selected_row, 
+        analista=analista_value, 
+        codigo=codigo_unico, 
+        pdf_hash=pdf_hash,
+        base64_logo=base64_logo,
+        fecha_utc=fecha_utc
+    )
 
     pdf_content = HTML(string=html_out).write_pdf()
     
@@ -290,7 +363,6 @@ def envia_mail(mail_value, nombre_completo_piloto, codigo, nombre_analista, part
             
         remitente = 'me'
 
-        # CORRECCIÓN: Asegurar que tipo_evento sea una cadena de texto
         if isinstance(tipo_evento, list) and tipo_evento:
             tipo_evento_str = tipo_evento[0].capitalize()
         else:
@@ -394,18 +466,31 @@ if st.session_state.get("registro_actualizado"):
                 codigo_generado = st.session_state.get("codigo_generado")
                 
                 with st.spinner("Generando PDF y subiendo a Google Drive..."):
-                    # Generación de PDF en dos pasos para incluir el hash
+                    # 1. Generar la fecha/hora UTC
+                    fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+                    # 2. Generar el PDF con todos los datos, incluyendo el hash
+                    final_pdf_path = crear_pdf_con_template(
+                        selected_row, 
+                        analista_value, 
+                        codigo_generado, 
+                        pdf_hash="[PENDIENTE]", # Un marcador temporal
+                        fecha_utc=fecha_utc
+                    )
                     
-                    # 1. Creamos un PDF temporal sin el hash
-                    temp_pdf_path = crear_pdf_con_template(selected_row, analista_value, codigo_generado, pdf_hash="")
+                    # 3. Calculamos el hash de este PDF
+                    pdf_hash = calcular_hash_pdf(final_pdf_path)
                     
-                    # 2. Calculamos el hash de este PDF
-                    pdf_hash = calcular_hash_pdf(temp_pdf_path)
+                    # 4. Volvemos a generar el PDF, esta vez con el hash real
+                    final_pdf_path = crear_pdf_con_template(
+                        selected_row, 
+                        analista_value, 
+                        codigo_generado, 
+                        pdf_hash=pdf_hash,
+                        fecha_utc=fecha_utc
+                    )
                     
-                    # 3. Creamos el PDF final, esta vez con el hash
-                    final_pdf_path = crear_pdf_con_template(selected_row, analista_value, codigo_generado, pdf_hash=pdf_hash)
-                    
-                    # 4. Subimos el PDF final
+                    # 5. Subimos el PDF final
                     pdf_url = subir_a_drive(final_pdf_path, DRIVE_FOLDER_ID)
                 
                 if final_pdf_path and pdf_url:
@@ -426,7 +511,8 @@ if st.session_state.get("registro_actualizado"):
                         if record_id:
                             fields_to_update = {
                                 'Verificado': 'Verificado',
-                                'PDF': [{'url': pdf_url}]
+                                'PDF': [{'url': pdf_url}],
+                                'Hash_PDF': pdf_hash
                             }
                             at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                             st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
@@ -435,8 +521,6 @@ if st.session_state.get("registro_actualizado"):
                         else:
                             st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
                             
-                    if os.path.exists(temp_pdf_path):
-                        os.remove(temp_pdf_path)
                     if os.path.exists(final_pdf_path):
                         os.remove(final_pdf_path)
             else:
