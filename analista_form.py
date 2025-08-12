@@ -23,6 +23,9 @@ from email import encoders
 import mimetypes
 from io import BytesIO
 import random
+from datetime import datetime
+import hashlib
+from weasyprint import HTML
 
 # Importaciones para la mejora del PDF
 from jinja2 import Template
@@ -167,159 +170,89 @@ def image_to_base64(image_path):
 # --- IMPROVED PDF CREATION FUNCTION USING HTML TEMPLATE ---
 def crear_pdf_con_template(selected_row, analista_value, codigo_unico):
     """
-    Generates a report PDF using an HTML template and Jinja2.
+    Genera un PDF con un template HTML que incluye:
+      - Logo (si está disponible, embebido en base64)
+      - Datos principales (ID-partido, Analista, Piloto, Fecha, Código único)
+      - Anexo Legal (texto estándar) con marca temporal UTC ISO y hash SHA256 del PDF final
     """
-    # 1. Define la ruta de la imagen
+
     logo_path = "./img/logo.png"
-    
-    # 2. Codifica la imagen a Base64
-    base64_logo = image_to_base64(logo_path)
-    
-    # 3. Usa la cadena Base64 en el HTML
-    if base64_logo:
-        html_template = f"""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <title>Reporte de Confirmación de Entrega</title>
-            <style>
-                body {{
-                    font-family: Arial, sans-serif;
-                    margin: 40px;
-                    color: #333;
-                }}
-                .header {{
-                    text-align: center;
-                    border-bottom: 2px solid #007bff;
-                    padding-bottom: 20px;
-                    margin-bottom: 30px;
-                }}
-                .header h1 {{
-                    color: #007bff;
-                }}
-                .content {{
-                    line-height: 1.6;
-                }}
-                .field-row {{
-                    margin-bottom: 10px;
-                }}
-                .field-name {{
-                    font-weight: bold;
-                    color: #555;
-                }}
-                .field-value {{
-                    margin-left: 10px;
-                }}
-                .logo {{
-                    width: 150px; /* Ajusta el tamaño según sea necesario */
-                    margin-bottom: 20px;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <img src="data:image/png;base64,{base64_logo}" alt="Logo de la empresa" class="logo">
-                <h1>Reporte de Confirmación de Entrega</h1>
-            </div>
-            <div class="content">
-                <div class="field-row">
-                    <span class="field-name">ID-partido:</span>
-                    <span class="field-value">{selected_row['ID-partido']}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Analista:</span>
-                    <span class="field-value">{analista_value}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Piloto:</span>
-                    <span class="field-value">{selected_row['Piloto']}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Fecha Partido:</span>
-                    <span class="field-value">{selected_row['Fecha partido']}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Código Único:</span>
-                    <span class="field-value">{codigo_unico}</span>
+    try:
+        with open(logo_path, "rb") as image_file:
+            import base64
+            base64_logo = base64.b64encode(image_file.read()).decode('utf-8')
+    except Exception:
+        base64_logo = None
+
+    fecha_utc = datetime.utcnow().replace(microsecond=0).isoformat() + 'Z'
+
+    anexo_legal = f"""
+    <h3>Anexo Legal — Declaración de Recepción y Custodia del Material</h3>
+    <p>La introducción del código único proporcionado por este sistema y la confirmación de
+    su recepción constituyen una <strong>aceptación expresa</strong> de la entrega física
+    del material identificado en este documento, así como la asunción de su custodia.</p>
+    <p>Esta confirmación constituye una firma electrónica simple y queda asociada a la
+    identidad del receptor, el código único, la fecha y hora de confirmación y la
+    descripción del material entregado. El registro se conserva para fines de auditoría
+    y resolución de disputas.</p>
+    <p>Fly-Fut S.L. se reserva el derecho a presentar esta documentación como prueba ante
+    cualquier autoridad administrativa o judicial competente.</p>
+    """
+
+    html_template = f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Reporte de Confirmación de Entrega</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 40px; color: #333; }}
+            .header {{ text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 30px; }}
+            .header h1 {{ color: #007bff; }}
+            .content {{ line-height: 1.6; }}
+            .field-row {{ margin-bottom: 10px; }}
+            .field-name {{ font-weight: bold; color: #555; width: 180px; display: inline-block; }}
+            .field-value {{ margin-left: 10px; }}
+            .logo {{ width: 150px; margin-bottom: 20px; }}
+            .anexo {{ margin-top: 30px; font-size: 12px; color: #444; border-top: 1px solid #ddd; padding-top: 12px; }}
+            .meta {{ font-family: monospace; font-size: 11px; color: #666; margin-top: 8px; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            {f'<img src="data:image/png;base64,{base64_logo}" alt="Logo" class="logo">' if base64_logo else ''}
+            <h1>Reporte de Confirmación de Entrega</h1>
+        </div>
+
+        <div class="content">
+            <div class="field-row"><span class="field-name">ID-partido:</span><span class="field-value">{selected_row.get('ID-partido', '')}</span></div>
+            <div class="field-row"><span class="field-name">Analista:</span><span class="field-value">{analista_value}</span></div>
+            <div class="field-row"><span class="field-name">Piloto:</span><span class="field-value">{selected_row.get('Piloto', '')}</span></div>
+            <div class="field-row"><span class="field-name">Fecha Partido:</span><span class="field-value">{selected_row.get('Fecha partido', '')}</span></div>
+            <div class="field-row"><span class="field-name">Código Único:</span><span class="field-value" style="font-family: monospace;">{codigo_unico}</span></div>
+
+            <div class="anexo">
+                {anexo_legal}
+                <div class="meta">
+                    <div>Fecha/hora UTC de generación: <strong>{fecha_utc}</strong></div>
+                    <div>Hash (SHA256) del PDF final: <strong>{{PDF_HASH}}</strong></div>
                 </div>
             </div>
-        </body>
-        </html>
-        """
-    else:
-        # Si no se encuentra el logo, usa una versión sin imagen
-        html_template = f"""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <title>Reporte de Confirmación de Entrega</title>
-            <style>
-                body {{
-                    font-family: Arial, sans-serif;
-                    margin: 40px;
-                    color: #333;
-                }}
-                .header {{
-                    text-align: center;
-                    border-bottom: 2px solid #007bff;
-                    padding-bottom: 20px;
-                    margin-bottom: 30px;
-                }}
-                .header h1 {{
-                    color: #007bff;
-                }}
-                .content {{
-                    line-height: 1.6;
-                }}
-                .field-row {{
-                    margin-bottom: 10px;
-                }}
-                .field-name {{
-                    font-weight: bold;
-                    color: #555;
-                }}
-                .field-value {{
-                    margin-left: 10px;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>Reporte de Confirmación de Entrega</h1>
-            </div>
-            <div class="content">
-                <div class="field-row">
-                    <span class="field-name">ID-partido:</span>
-                    <span class="field-value">{selected_row['ID-partido']}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Analista:</span>
-                    <span class="field-value">{analista_value}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Piloto:</span>
-                    <span class="field-value">{selected_row['Piloto']}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Fecha Partido:</span>
-                    <span class="field-value">{selected_row['Fecha partido']}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Código Único:</span>
-                    <span class="field-value">{codigo_unico}</span>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
+        </div>
+    </body>
+    </html>
+    """
 
     pdf_content = HTML(string=html_template).write_pdf()
-    
-    file_path = f"reporte_{selected_row.get('ID-partido', 'sin_id')}.pdf"
-    with open(file_path, "wb") as f:
-        f.write(pdf_content)
+
+    pdf_hash = hashlib.sha256(pdf_content).hexdigest()
+    html_with_hash = html_template.replace('{{PDF_HASH}}', pdf_hash)
+    pdf_content_final = HTML(string=html_with_hash).write_pdf()
+
+    safe_id = str(selected_row.get('ID-partido', 'sin_id')).replace(' ', '_')
+    file_path = f"reporte_{safe_id}_{codigo_unico}.pdf"
+    with open(file_path, 'wb') as f:
+        f.write(pdf_content_final)
 
     return file_path
 
@@ -584,6 +517,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
