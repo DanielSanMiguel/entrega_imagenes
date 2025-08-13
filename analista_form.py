@@ -141,8 +141,8 @@ def conectar_a_airtable():
         df = pd.DataFrame([r['fields'] for r in records])
         
         # Ensure 'Rec' column exists, which is the record ID
-        if 'id' in [r for r in records][0]:
-            df['Rec'] = [r['id'] for r in records]
+        #if 'id' in [r for r in records][0]:
+            #df['Rec'] = [r['id'] for r in records]
         
         # Safely handle list fields
         for col in ['Analista', 'Mail', 'Tipo']:
@@ -492,3 +492,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
