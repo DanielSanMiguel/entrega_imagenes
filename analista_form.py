@@ -13,7 +13,7 @@ import datetime
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload # Importamos MediaIoBaseUpload
 import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -268,8 +268,11 @@ def subir_a_drive(pdf_content, filename, folder_id):
         return None
 
     file_metadata = {'name': filename, 'parents': [folder_id]}
-    media = MediaFileUpload(BytesIO(pdf_content), mimetype='application/pdf')
     
+    # Correction: Use MediaIoBaseUpload for in-memory byte streams.
+    # MediaFileUpload expects a file path, not a BytesIO object.
+    media = MediaIoBaseUpload(BytesIO(pdf_content), mimetype='application/pdf')
+
     try:
         archivo = servicio_drive.files().create(body=file_metadata, media_body=media, fields='id, webContentLink').execute()
         
@@ -489,6 +492,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
