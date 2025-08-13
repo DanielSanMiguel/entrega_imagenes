@@ -13,7 +13,7 @@ import datetime
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload # Importamos MediaIoBaseUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
 import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -141,8 +141,8 @@ def conectar_a_airtable():
         df = pd.DataFrame([r['fields'] for r in records])
         
         # Ensure 'Rec' column exists, which is the record ID
-        #if 'id' in [r for r in records][0]:
-            #df['Rec'] = [r['id'] for r in records]
+        if 'id' in [r for r in records][0]:
+            df['Rec'] = [r['id'] for r in records]
         
         # Safely handle list fields
         for col in ['Analista', 'Mail', 'Tipo']:
@@ -230,7 +230,8 @@ def crear_pdf_con_template(selected_row, analista_value, codigo_unico, pdf_hash,
             identificado en este documento, así como la asunción de su custodia.</p>
             <p>Esta confirmación constituye una firma electrónica simple y queda asociada a la identidad
             del receptor, el código único, la fecha y hora de confirmación y la descripción del material
-            entregado. El registro se conserva para fines de auditoría y resolución de disputas.</p>
+            entregado.</p>
+            <p>El registro se conserva para fines de auditoría y resolución de disputas.</p>
             <p>Fly-Fut S.L. se reserva el derecho a presentar esta documentación como prueba ante
             cualquier autoridad administrativa o judicial competente.</p>
             <div class="field-row hash-section">
@@ -320,7 +321,15 @@ def show_main_dashboard(tabla_entregas):
         st.warning("No se encontraron datos en la tabla de Airtable. Por favor, verifica la conexión.")
         return
 
-    partidos_pendientes = tabla_entregas[tabla_entregas['Verificado'].isin(['Pendiente', None])]['ID-partido'].unique().tolist()
+    # Filtramos para evitar el error de 'not in list' si 'Verificado' no es una columna.
+    if 'Verificado' not in tabla_entregas.columns:
+        st.warning("La columna 'Verificado' no se encontró en la tabla de Airtable. Asegúrate de que el nombre del campo sea correcto.")
+        return
+
+    # La siguiente línea filtra por los valores 'Pendiente' o 'None' (campo vacío).
+    # La adición de `pd.isna()` asegura que se capturen valores nulos de cualquier tipo.
+    filtro_pendientes = (tabla_entregas['Verificado'] == 'Pendiente') | (pd.isna(tabla_entregas['Verificado']))
+    partidos_pendientes = tabla_entregas[filtro_pendientes]['ID-partido'].unique().tolist()
     
     if not partidos_pendientes:
         st.info("No hay partidos pendientes de verificación.")
@@ -456,8 +465,11 @@ def show_code_input():
                         # Actualizar Airtable a 'Verificado'
                         at_update = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                         record_id = selected_row.get('Rec')
+                        # Asegúrate de que el campo 'Hash_PDF' exista en tu tabla de Airtable.
+                        # Debe ser de tipo 'Single line text'.
                         at_update.update('Confirmaciones_de_Entrega', record_id, {
                             'Verificado': 'Verificado',
+                            # Asegúrate de que el campo 'PDF' en Airtable sea de tipo 'Attachment'.
                             'PDF': [{'url': pdf_url}],
                             'Hash_PDF': pdf_hash
                         })
@@ -492,4 +504,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
