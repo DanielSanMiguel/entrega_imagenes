@@ -68,6 +68,7 @@ SCOPES_GMAIL = ['https://www.googleapis.com/auth/gmail.send']
 SCOPES_DRIVE = ['https://www.googleapis.com/auth/drive']
 DRIVE_FOLDER_ID = "1yNFgOvRclge1SY9QtvnD980f3-4In_hs"
 
+@st.cache_resource(ttl=3600)
 def get_creds(scopes):
     """
     Manages Google authentication using a refresh token
@@ -166,181 +167,119 @@ def image_to_base64(image_path):
         st.error(f"Error: No se encontró la imagen en la ruta {image_path}")
         return None
 
-def calcular_hash_pdf(pdf_path):
-    """Calcula el hash SHA256 de un archivo PDF."""
-    try:
-        with open(pdf_path, "rb") as f:
-            bytes = f.read()
-            readable_hash = hashlib.sha256(bytes).hexdigest()
-        return readable_hash
-    except FileNotFoundError:
-        st.error(f"Error al calcular el hash: No se encontró el archivo en {pdf_path}")
-        return None
+def calcular_hash_bytes(data):
+    """Calcula el hash SHA256 de un objeto en bytes."""
+    return hashlib.sha256(data).hexdigest()
     
-# --- PDF CREATION FUNCTION ---
-def crear_pdf_con_template(selected_row, analista_value, codigo_unico, pdf_hash="", fecha_utc=""):
+# --- PDF CREATION FUNCTION (MODIFIED) ---
+def crear_pdf_con_template_en_memoria(selected_row, analista_value, codigo_unico, pdf_hash="", fecha_utc="", incluir_hash=True):
     """
-    Generates a report PDF using an HTML template and Jinja2.
+    Generates a report PDF in memory (BytesIO) using an HTML template and Jinja2.
     """
     logo_path = "./img/logo.png"
     base64_logo = image_to_base64(logo_path)
     
-    if base64_logo:
-        html_template_string = """
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <title>Reporte de Confirmación de Entrega</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
-                .header { text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 30px; }
-                .header h1 { color: #007bff; }
-                .content { line-height: 1.6; }
-                .field-row { margin-bottom: 10px; }
-                .field-name { font-weight: bold; color: #555; }
-                .field-value { margin-left: 10px; }
-                .logo { width: 150px; margin-bottom: 20px; }
-                .legal-annex { margin-top: 50px; font-size: 11px; color: #666; }
-                .legal-annex h4 { font-size: 12px; text-align: center; color: #333; }
-                .hash-section { margin-top: 15px; font-size: 10px; word-break: break-all; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
+    html_template_string = """
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Reporte de Confirmación de Entrega</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+            .header { text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 30px; }
+            .header h1 { color: #007bff; }
+            .content { line-height: 1.6; }
+            .field-row { margin-bottom: 10px; }
+            .field-name { font-weight: bold; color: #555; }
+            .field-value { margin-left: 10px; }
+            .logo { width: 150px; margin-bottom: 20px; }
+            .legal-annex { margin-top: 50px; font-size: 11px; color: #666; }
+            .legal-annex h4 { font-size: 12px; text-align: center; color: #333; }
+            .hash-section { margin-top: 15px; font-size: 10px; word-break: break-all; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            {% if base64_logo %}
                 <img src="data:image/png;base64,{{ base64_logo }}" alt="Logo de la empresa" class="logo">
-                <h1>Reporte de Confirmación de Entrega</h1>
+            {% endif %}
+            <h1>Reporte de Confirmación de Entrega</h1>
+        </div>
+        <div class="content">
+            <div class="field-row">
+                <span class="field-name">ID-partido:</span>
+                <span class="field-value">{{ row['ID-partido'] }}</span>
             </div>
-            <div class="content">
-                <div class="field-row">
-                    <span class="field-name">ID-partido:</span>
-                    <span class="field-value">{{ row['ID-partido'] }}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Analista:</span>
-                    <span class="field-value">{{ analista }}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Piloto:</span>
-                    <span class="field-value">{{ row['Piloto'] }}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Fecha Partido:</span>
-                    <span class="field-value">{{ row['Fecha partido'] }}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Código Único:</span>
-                    <span class="field-value">{{ codigo }}</span>
-                </div>
+            <div class="field-row">
+                <span class="field-name">Analista:</span>
+                <span class="field-value">{{ analista }}</span>
             </div>
-            <hr>
-            <div class="legal-annex">
-                <h4>Anexo Legal — Declaración de Recepción y Custodia del Material</h4>
-                <p>La introducción del código único proporcionado por este sistema y la confirmación de su
-                recepción constituyen una aceptación expresa de la entrega física del material
-                identificado en este documento, así como la asunción de su custodia.</p>
-                <p>Esta confirmación constituye una firma electrónica simple y queda asociada a la identidad
-                del receptor, el código único, la fecha y hora de confirmación y la descripción del material
-                entregado. El registro se conserva para fines de auditoría y resolución de disputas.</p>
-                <p>Fly-Fut S.L. se reserva el derecho a presentar esta documentación como prueba ante
-                cualquier autoridad administrativa o judicial competente.</p>
-                <div class="field-row hash-section">
-                    <span class="field-name">Fecha/hora UTC de generación:</span>
-                    <span class="field-value">{{ fecha_utc }}</span>
-                </div>
-                <div class="field-row hash-section">
-                    <span class="field-name">Hash (SHA256) del PDF final:</span>
-                    <span class="field-value">{{ pdf_hash }}</span>
-                </div>
+            <div class="field-row">
+                <span class="field-name">Piloto:</span>
+                <span class="field-value">{{ row['Piloto'] }}</span>
             </div>
-        </body>
-        </html>
-        """
-    else:
-        # Template sin el logo...
-        html_template_string = """
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <title>Reporte de Confirmación de Entrega</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
-                .header { text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 30px; }
-                .header h1 { color: #007bff; }
-                .content { line-height: 1.6; }
-                .field-row { margin-bottom: 10px; }
-                .field-name { font-weight: bold; color: #555; }
-                .field-value { margin-left: 10px; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>Reporte de Confirmación de Entrega</h1>
+            <div class="field-row">
+                <span class="field-name">Fecha Partido:</span>
+                <span class="field-value">{{ row['Fecha partido'] }}</span>
             </div>
-            <div class="content">
-                <div class="field-row">
-                    <span class="field-name">ID-partido:</span>
-                    <span class="field-value">{{ row['ID-partido'] }}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Analista:</span>
-                    <span class="field-value">{{ analista }}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Piloto:</span>
-                    <span class="field-value">{{ row['Piloto'] }}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Fecha Partido:</span>
-                    <span class="field-value">{{ row['Fecha partido'] }}</span>
-                </div>
-                <div class="field-row">
-                    <span class="field-name">Código Único:</span>
-                    <span class="field-value">{{ codigo }}</span>
-                </div>
-                <div class="field-row hash-section">
-                    <span class="field-name">Fecha/hora UTC de generación:</span>
-                    <span class="field-value">{{ fecha_utc }}</span>
-                </div>
-                <div class="field-row hash-section">
-                    <span class="field-name">Hash (SHA256) del PDF final:</span>
-                    <span class="field-value">{{ pdf_hash }}</span>
-                </div>
+            <div class="field-row">
+                <span class="field-name">Código Único:</span>
+                <span class="field-value">{{ codigo }}</span>
             </div>
-        </body>
-        </html>
-        """
+        </div>
+        <hr>
+        <div class="legal-annex">
+            <h4>Anexo Legal — Declaración de Recepción y Custodia del Material</h4>
+            <p>La introducción del código único proporcionado por este sistema y la confirmación de su
+            recepción constituyen una aceptación expresa de la entrega física del material
+            identificado en este documento, así como la asunción de su custodia.</p>
+            <p>Esta confirmación constituye una firma electrónica simple y queda asociada a la identidad
+            del receptor, el código único, la fecha y hora de confirmación y la descripción del material
+            entregado. El registro se conserva para fines de auditoría y resolución de disputas.</p>
+            <p>Fly-Fut S.L. se reserva el derecho a presentar esta documentación como prueba ante
+            cualquier autoridad administrativa o judicial competente.</p>
+            {% if incluir_hash %}
+            <div class="field-row hash-section">
+                <span class="field-name">Fecha/hora UTC de generación:</span>
+                <span class="field-value">{{ fecha_utc }}</span>
+            </div>
+            <div class="field-row hash-section">
+                <span class="field-name">Hash (SHA256) del PDF final:</span>
+                <span class="field-value">{{ pdf_hash }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </body>
+    </html>
+    """
 
     template = Template(html_template_string)
     html_out = template.render(
-        row=selected_row, 
-        analista=analista_value, 
-        codigo=codigo_unico, 
+        row=selected_row,  
+        analista=analista_value,  
+        codigo=codigo_unico,  
         pdf_hash=pdf_hash,
         base64_logo=base64_logo,
-        fecha_utc=fecha_utc
+        fecha_utc=fecha_utc,
+        incluir_hash=incluir_hash
     )
 
-    pdf_content = HTML(string=html_out).write_pdf()
-    
-    file_path = f"reporte_{selected_row.get('ID-partido', 'sin_id')}.pdf"
-    with open(file_path, "wb") as f:
-        f.write(pdf_content)
+    pdf_buffer = BytesIO()
+    HTML(string=html_out).write_pdf(target=pdf_buffer)
+    return pdf_buffer.getvalue()
 
-    return file_path
-
-# --- Function to upload PDF to Drive (modified) ---
-def subir_a_drive(file_path, folder_id):
+# --- Function to upload PDF to Drive (MODIFIED) ---
+def subir_a_drive_desde_bytes(pdf_bytes, file_name, folder_id):
     """
-    Uploads a file to Google Drive, makes it public, and returns its view link.
+    Uploads a file to Google Drive from a bytes object, makes it public, and returns its view link.
     """
     servicio_drive = autenticar_drive()
     if not servicio_drive:
         return None
 
-    file_metadata = {'name': os.path.basename(file_path), 'parents': [folder_id]}
-    media = MediaFileUpload(file_path, mimetype='application/pdf')
+    file_metadata = {'name': file_name, 'parents': [folder_id]}
+    media = MediaFileUpload(BytesIO(pdf_bytes), mimetype='application/pdf') # Usa BytesIO para el objeto de bytes
     try:
         archivo = servicio_drive.files().create(body=file_metadata, media_body=media, fields='id, webContentLink').execute()
         st.success(f"Archivo subido a Google Drive. ID: {archivo.get('id')}")
@@ -473,33 +412,35 @@ if st.session_state.get("registro_actualizado"):
                     # 1. Generar la fecha/hora UTC
                     fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
-                    # 2. Generar el PDF con todos los datos, incluyendo el hash
-                    final_pdf_path = crear_pdf_con_template(
-                        selected_row, 
-                        analista_value, 
-                        codigo_generado, 
-                        pdf_hash="[PENDIENTE]", # Un marcador temporal
-                        fecha_utc=fecha_utc
+                    # 2. Generar el PDF en memoria SIN el hash
+                    pdf_content_without_hash = crear_pdf_con_template_en_memoria(
+                        selected_row,
+                        analista_value,
+                        codigo_generado,
+                        fecha_utc=fecha_utc,
+                        incluir_hash=False
                     )
                     
-                    # 3. Calculamos el hash de este PDF
-                    pdf_hash = calcular_hash_pdf(final_pdf_path)
+                    # 3. Calcular el hash de esa versión sin hash
+                    pdf_hash = calcular_hash_bytes(pdf_content_without_hash)
                     
-                    # 4. Volvemos a generar el PDF, esta vez con el hash real
-                    final_pdf_path = crear_pdf_con_template(
-                        selected_row, 
-                        analista_value, 
-                        codigo_generado, 
+                    # 4. Generar el PDF final con el hash (el mismo contenido que el anterior, pero con el hash impreso)
+                    final_pdf_content = crear_pdf_con_template_en_memoria(
+                        selected_row,
+                        analista_value,
+                        codigo_generado,
                         pdf_hash=pdf_hash,
-                        fecha_utc=fecha_utc
+                        fecha_utc=fecha_utc,
+                        incluir_hash=True
                     )
                     
-                    # 5. Subimos el PDF final
-                    pdf_url = subir_a_drive(final_pdf_path, DRIVE_FOLDER_ID)
+                    # 5. Subir el PDF final (desde bytes)
+                    file_name = f"reporte_{selected_row.get('ID-partido', 'sin_id')}.pdf"
+                    pdf_url = subir_a_drive_desde_bytes(final_pdf_content, file_name, DRIVE_FOLDER_ID)
                 
-                if final_pdf_path and pdf_url:
-                    with open(final_pdf_path, "rb") as f:
-                        adjuntos = [{'nombre': os.path.basename(final_pdf_path), 'contenido': f.read()}]
+                if pdf_url:
+                    # Preparar adjunto desde el contenido en memoria
+                    adjuntos = [{'nombre': file_name, 'contenido': final_pdf_content}]
                     
                     if mail_value and enviar_pdf_confirmacion(
                         mail_value, 
@@ -525,10 +466,8 @@ if st.session_state.get("registro_actualizado"):
                         else:
                             st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
                             
-                    if os.path.exists(final_pdf_path):
-                        os.remove(final_pdf_path)
-            else:
-                st.error("No se pudo recuperar el registro. Por favor, reinicia el proceso.")
+                else:
+                    st.error("No se pudo recuperar el registro o subir el PDF. Por favor, reinicia el proceso.")
                 
             if "registro_actualizado" in st.session_state:
                 del st.session_state["registro_actualizado"]
@@ -616,6 +555,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
