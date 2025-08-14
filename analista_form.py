@@ -15,6 +15,7 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaIoBaseUpload
 import base64
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -279,7 +280,10 @@ def subir_a_drive_desde_bytes(pdf_bytes, file_name, folder_id):
         return None
 
     file_metadata = {'name': file_name, 'parents': [folder_id]}
-    media = MediaFileUpload(BytesIO(pdf_bytes), mimetype='application/pdf') # Usa BytesIO para el objeto de bytes
+
+    # Usar MediaIoBaseUpload, que es la clase correcta para objetos de tipo BytesIO.
+    media = MediaIoBaseUpload(BytesIO(pdf_bytes), mimetype='application/pdf', resumable=True)
+    
     try:
         archivo = servicio_drive.files().create(body=file_metadata, media_body=media, fields='id, webContentLink').execute()
         st.success(f"Archivo subido a Google Drive. ID: {archivo.get('id')}")
@@ -555,6 +559,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
