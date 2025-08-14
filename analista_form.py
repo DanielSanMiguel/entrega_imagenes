@@ -35,6 +35,10 @@ from airtable import Airtable
 st.set_page_config(page_title="Dashboard de Entregas", page_icon="✅", layout="wide")
 st.title("✅ Dashboard de Confirmaciones de Entrega")
 
+# --- PWA Manifest Link ---
+st.markdown('<link rel="manifest" href="/manifest.json">', unsafe_allow_html=True)
+
+
 # --- LOGIN LOGIC ---
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
@@ -612,5 +616,6 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
