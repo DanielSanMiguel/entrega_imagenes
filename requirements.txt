@@ -5,7 +5,7 @@ google-auth-oauthlib
 google-auth-httplib2
 weasyprint
 jinja2
-airtable-python-api
+airtable
 Flask
 gunicorn
 python-dotenv
