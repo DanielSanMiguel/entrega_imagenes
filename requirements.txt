@@ -1,0 +1,11 @@
+streamlit==1.36.0
+pandas==2.2.2
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+weasyprint
+jinja2
+airtable-python-api
+Flask
+gunicorn
+python-dotenv
