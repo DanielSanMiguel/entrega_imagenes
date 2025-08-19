@@ -505,17 +505,18 @@ if not tabla_entregas.empty:
             mail_raw=limpiar_caracteres(mail_list[0])
             mail_value_input = st.text_input("Mail", value=mail_raw)
             
-            # Checkbox para enviar el código y activar el flujo completo
-            enviar_mail_y_verificar = st.checkbox("Enviar código")
-            # Checkbox para generar solo el PDF y subirlo
-            verificado = st.checkbox("Marcar como Verificado") 
+            # Replaced the two checkboxes with a single st.radio
+            opcion_seleccionada = st.radio(
+                "Selecciona el tipo de acción:",
+                ("Enviar código", "Marcar como Verificado")
+            )
             
             submitted = st.form_submit_button("Actualizar Registro")
 
         if submitted:
             if not analista_value_input or not mail_value_input:
                 st.warning("El nombre del analista y el correo son obligatorios.")
-            elif enviar_mail_y_verificar:
+            elif opcion_seleccionada == "Enviar código":
                 random_code = random.randint(100000, 999999)
                 at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                 record_id = selected_row.get('Rec')
@@ -555,7 +556,7 @@ if not tabla_entregas.empty:
                 else:
                     st.error("No se pudo obtener el ID del registro.")
 
-            elif verificado:
+            elif opcion_seleccionada == "Marcar como Verificado":
                 at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                 record_id = selected_row.get('Rec')
                 
@@ -588,7 +589,7 @@ if not tabla_entregas.empty:
                         fields_to_update = {
                             'Analista(Form)': analista_value_input,
                             'Mail(Form)': mail_value_input,
-                            'Verificado': 'Pendiente',
+                            'Verificado': 'Verificado',
                             'PDF': [{'url': pdf_url}],
                             'Hash_PDF': pdf_hash,
                             'Codigo_unico': '------'
@@ -605,10 +606,9 @@ if not tabla_entregas.empty:
                     st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
             
             else:
-                st.warning("Debes marcar 'Enviar código' o 'Marcar como Verificado' para continuar.")
+                st.warning("Debes seleccionar una opción para continuar.")
                 
     else:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
-
