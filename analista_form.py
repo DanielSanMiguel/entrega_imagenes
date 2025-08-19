@@ -599,12 +599,12 @@ if not tabla_entregas.empty:
                     if pdf_url:
                         # Update Airtable to 'Verificado' after successful PDF upload
                         fields_to_update = {
-                            'Verificado': 'Verificado',
+                            'Verificado': 'Pendiente', # Changed from 'Verificado' to 'Pendiente'
                             'PDF': [{'url': pdf_url}],
                             'Hash_PDF': pdf_hash,
                         }
                         at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
-                        st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
+                        st.success("Registro de Airtable actualizado a 'Pendiente' y el PDF subido.")
                         
                         st.cache_data.clear()
                         st.cache_resource.clear()
