@@ -507,8 +507,8 @@ if not tabla_entregas.empty:
             
             # Replaced the two checkboxes with a single st.radio
             opcion_seleccionada = st.radio(
-                "Selecciona el tipo de acción:",
-                ("Enviar código", "Marcar como Verificado")
+                "Selecciona el tipo envio:",
+                ("Enviar código", "Enviar enlace")
             )
             
             submitted = st.form_submit_button("Actualizar Registro")
@@ -612,3 +612,4 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
