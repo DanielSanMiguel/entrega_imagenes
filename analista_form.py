@@ -502,30 +502,44 @@ if not tabla_entregas.empty:
             mail_raw=limpiar_caracteres(mail_list[0])
             mail_value_input = st.text_input("Mail", value=mail_raw)
             
-            verificado = st.checkbox("Marcar como Verificado")
+            # Nuevo checkbox para controlar el flujo
+            enviar_mail_y_verificar = st.checkbox("Marcar como Entregado y enviar mail")
+            verificado = st.checkbox("Marcar como Verificado") # Checkbox anterior
+            
             submitted = st.form_submit_button("Actualizar Registro")
 
         if submitted:
-            if verificado:
-                if not analista_value_input or not mail_value_input:
-                    st.warning("El nombre del analista y el correo son obligatorios.")
-                else:
-                    random_code = random.randint(100000, 999999)
+            if not analista_value_input or not mail_value_input:
+                st.warning("El nombre del analista y el correo son obligatorios.")
+            else:
+                at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
+                record_id = selected_row.get('Rec')
+                
+                if record_id:
+                    # Lógica para determinar el estado de "Verificado"
+                    # Si "enviar_mail_y_verificar" está marcado, el estado es 'Pendiente'
+                    # Si no, se basa en el checkbox "verificado" anterior
+                    if enviar_mail_y_verificar:
+                        new_verificado_status = 'Pendiente'
+                    elif verificado:
+                        new_verificado_status = 'Verificado' # Esto es para el caso en el que no se envie mail, y se marque como verificado
+                    else:
+                        new_verificado_status = '' # O el valor por defecto que desees
+                    
+                    fields_to_update = {
+                        'Analista(Form)': analista_value_input,
+                        'Mail(Form)': mail_value_input,
+                        'Verificado': new_verificado_status
+                    }
 
-                    # Update Airtable
-                    at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
-                    record_id = selected_row.get('Rec')
-                    if record_id:
-                        fields_to_update = {
-                            'Analista(Form)': analista_value_input,
-                            'Mail(Form)': mail_value_input,
-                            'Verificado': 'Pendiente',
-                            'Codigo_unico': str(random_code),
-                        }
+                    if enviar_mail_y_verificar:
+                        random_code = random.randint(100000, 999999)
+                        fields_to_update['Codigo_unico'] = str(random_code)
+
                         at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                         
                         st.success("Registro de Airtable actualizado a 'Pendiente'.")
-
+                        
                         if not mail_value_input or pd.isna(mail_value_input):
                             st.error("No hay correo válido para enviar el código.")
                         else:
@@ -552,15 +566,16 @@ if not tabla_entregas.empty:
                             except Exception as e:
                                 st.error(f"No se pudo enviar el correo: {e}")
                     else:
-                        st.error("No se pudo obtener el ID del registro.")
-            else:
-                st.warning("Debes marcar 'Marcar como Verificado' para iniciar el proceso.")
+                        # Si no se marca el nuevo checkbox, solo actualiza Airtable y se detiene.
+                        del fields_to_update['Codigo_unico'] # Asegura que no se envíe un código si no se debe
+                        at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
+                        st.success("Registro de Airtable actualizado sin enviar correo.")
+                        conectar_a_airtable.clear()
+                        st.rerun()
+
+                else:
+                    st.error("No se pudo obtener el ID del registro.")
     else:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
-
-
-
-
-
