@@ -556,7 +556,8 @@ if not tabla_entregas.empty:
                 else:
                     st.error("No se pudo obtener el ID del registro.")
 
-            elif opcion_seleccionada == "Marcar como Verificado":
+            # Corrected condition to match the new radio button option
+            elif opcion_seleccionada == "Enviar enlace":
                 at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                 record_id = selected_row.get('Rec')
                 
@@ -612,4 +613,3 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
-
