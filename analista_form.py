@@ -515,10 +515,7 @@ if not tabla_entregas.empty:
             submitted = st.form_submit_button("Actualizar Registro")
 
         if submitted:
-            # Check if the "Marcar como Verificado" checkbox is selected first.
-            if not verificado:
-                st.warning("El checkbox 'Marcar como Verificado' debe estar marcado para poder actualizar el registro.")
-            elif not analista_value_input or not mail_value_input:
+            if not analista_value_input or not mail_value_input:
                 st.warning("El nombre del analista y el correo son obligatorios.")
             elif enviar_mail_y_verificar:
                 random_code = random.randint(100000, 999999)
@@ -560,12 +557,22 @@ if not tabla_entregas.empty:
                 else:
                     st.error("No se pudo obtener el ID del registro.")
 
-            else:  # This now handles both cases where only 'verificado' is checked, or none are.
-                # Nuevo flujo para generar PDF sin código y subirlo
+            elif verificado:
+                # Si el checkbox 'verificado' está marcado solo
                 at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                 record_id = selected_row.get('Rec')
                 
                 if record_id:
+                    # Update Airtable to 'Pendiente' before starting the process
+                    fields_to_update_pending = {
+                        'Analista(Form)': analista_value_input,
+                        'Mail(Form)': mail_value_input,
+                        'Verificado': 'Pendiente', # Changed to Pending
+                        'Codigo_unico': '------'
+                    }
+                    at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update_pending)
+                    st.info("Registro de Airtable actualizado a 'Pendiente'. Generando PDF...")
+
                     with st.spinner("Generando PDF y subiendo a Google Drive..."):
                         # Generar el PDF con código nulo o un placeholder
                         codigo_placeholder = "N/A"
@@ -592,15 +599,13 @@ if not tabla_entregas.empty:
                         pdf_url = subir_a_drive_desde_bytes(final_pdf_content, file_name, DRIVE_FOLDER_ID)
                     
                     if pdf_url:
-                        fields_to_update = {
-                            'Analista(Form)': analista_value_input,
-                            'Mail(Form)': mail_value_input,
+                        # Update Airtable to 'Verificado' after successful PDF upload
+                        fields_to_update_complete = {
                             'Verificado': 'Verificado',
                             'PDF': [{'url': pdf_url}],
                             'Hash_PDF': pdf_hash,
-                            'Codigo_unico': '------'
                         }
-                        at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
+                        at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update_complete)
                         st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
                         conectar_a_airtable.clear()
                         st.rerun()
@@ -608,14 +613,16 @@ if not tabla_entregas.empty:
                         st.error("No se pudo subir el PDF. Por favor, inténtalo de nuevo.")
                 else:
                     st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
-        else:
-            # Si ninguno de los checkboxes está marcado
-            st.warning("Debes marcar 'Enviar código' o 'Marcar como Verificado' para continuar.")
+            
+            else:
+                # Si ninguno de los checkboxes está marcado
+                st.warning("Debes marcar 'Enviar código' o 'Marcar como Verificado' para continuar.")
                 
     else:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
