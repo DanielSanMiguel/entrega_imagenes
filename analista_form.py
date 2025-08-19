@@ -608,7 +608,6 @@ if not tabla_entregas.empty:
                         st.error("No se pudo subir el PDF. Por favor, inténtalo de nuevo.")
                 else:
                     st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
-            
             else:
                 # Si ninguno de los checkboxes está marcado
                 st.warning("Debes marcar 'Enviar código' o 'Marcar como Verificado' para continuar.")
@@ -617,6 +616,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
