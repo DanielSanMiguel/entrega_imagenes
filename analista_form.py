@@ -566,58 +566,10 @@ if not tabla_entregas.empty:
                     fields_to_update_pending = {
                         'Analista(Form)': analista_value_input,
                         'Mail(Form)': mail_value_input,
-                        'Verificado': 'Pendiente', # Corrected status to 'Pendiente'
-                        'Codigo_unico': '------'
-                    }
-                    at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update_pending)
-                    st.success("Registro de Airtable actualizado a 'Pendiente'.")
-
-                    with st.spinner("Generando PDF y subiendo a Google Drive..."):
-                        codigo_placeholder = "N/A"
-                        fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-                        
-                        pdf_content_without_hash = crear_pdf_con_template_en_memoria(
-                            selected_row,
-                            analista_value_input,
-                            codigo_placeholder,
-                            fecha_utc=fecha_utc,
-                            incluir_hash=False
-                        )
-                        pdf_hash = calcular_hash_bytes(pdf_content_without_hash)
-                        final_pdf_content = crear_pdf_con_template_en_memoria(
-                            selected_row,
-                            analista_value_input,
-                            codigo_placeholder,
-                            pdf_hash=pdf_hash,
-                            fecha_utc=fecha_utc,
-                            incluir_hash=True
-                        )
-
-                        file_name = f"reporte_verificado_{selected_row.get('ID-partido', 'sin_id')}.pdf"
-                        pdf_url = subir_a_drive_desde_bytes(final_pdf_content, file_name, DRIVE_FOLDER_ID)
-                    
-                    if pdf_url:
-                        # Update Airtable to 'Verificado' after successful PDF upload
-                        fields_to_update = {
-                            'Verificado': 'Pendiente', # Changed from 'Verificado' to 'Pendiente'
-                            'PDF': [{'url': pdf_url}],
-                            'Hash_PDF': pdf_hash,
-                        }
-                        at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
-                        st.success("Registro de Airtable actualizado a 'Pendiente' y el PDF subido.")
-                        
-                        st.cache_data.clear()
-                        st.cache_resource.clear()
-                        st.rerun()
-                    else:
-                        st.error("No se pudo subir el PDF. Por favor, inténtalo de nuevo.")
-                else:
-                    st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
-            
-            else:
-                st.warning("Debes seleccionar una opción para continuar.")
+                        'Verificado': 'Pendiente', # Corrected
                 
     else:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
