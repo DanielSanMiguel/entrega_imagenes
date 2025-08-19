@@ -508,7 +508,7 @@ if not tabla_entregas.empty:
             mail_value_input = st.text_input("Mail", value=mail_raw)
             
             # Nuevo checkbox para controlar el flujo
-            enviar_mail_y_verificar = st.checkbox("Marcar como Entregado y enviar mail")
+            enviar_mail_y_verificar = st.checkbox("Enviar código")
             verificado = st.checkbox("Marcar como Verificado") # Checkbox anterior
             
             submitted = st.form_submit_button("Actualizar Registro")
@@ -584,6 +584,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
