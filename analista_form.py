@@ -507,84 +507,110 @@ if not tabla_entregas.empty:
             mail_raw=limpiar_caracteres(mail_list[0])
             mail_value_input = st.text_input("Mail", value=mail_raw)
             
-            # Nuevo checkbox para controlar el flujo
+            # Checkbox para enviar el código y activar el flujo completo
             enviar_mail_y_verificar = st.checkbox("Enviar código")
-            verificado = st.checkbox("Marcar como Verificado") # Checkbox anterior
+            # Checkbox para generar solo el PDF y subirlo
+            verificado = st.checkbox("Marcar como Verificado") 
             
             submitted = st.form_submit_button("Actualizar Registro")
 
         if submitted:
             if not analista_value_input or not mail_value_input:
                 st.warning("El nombre del analista y el correo son obligatorios.")
-            else:
+            elif enviar_mail_y_verificar:
+                random_code = random.randint(100000, 999999)
                 at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                 record_id = selected_row.get('Rec')
                 
                 if record_id:
-                    # Lógica para determinar el estado de "Verificado"
-                    # Si "enviar_mail_y_verificar" está marcado, el estado es 'Pendiente'
-                    # Si no, se basa en el checkbox "verificado" anterior
-                    if enviar_mail_y_verificar:
-                        new_verificado_status = 'Pendiente'
-                    elif verificado:
-                        new_verificado_status = 'Pendiente' # Esto es para el caso en el que no se envie mail, y se marque como verificado
-                    else:
-                        new_verificado_status = '' # O el valor por defecto que desees
-                    
                     fields_to_update = {
                         'Analista(Form)': analista_value_input,
                         'Mail(Form)': mail_value_input,
-                        'Verificado': new_verificado_status
+                        'Verificado': 'Pendiente',
+                        'Codigo_unico': str(random_code),
                     }
-
-                    if enviar_mail_y_verificar:
-                        random_code = random.randint(100000, 999999)
-                        fields_to_update['Codigo_unico'] = str(random_code)
-
-                        at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
-                        
-                        st.success("Registro de Airtable actualizado a 'Pendiente'.")
-                        
-                        if not mail_value_input or pd.isna(mail_value_input):
-                            st.error("No hay correo válido para enviar el código.")
-                        else:
-                            try:
-                                if envia_mail(
-                                    mail_value_input, 
-                                    selected_row.get('Piloto', ''), 
-                                    str(random_code), 
-                                    analista_value_input, 
-                                    selected_row.get('ID-partido', 'sin_id'),
-                                    selected_row.get('Fecha partido', 'sin fecha'),
-                                    selected_row.get('Tipo', 'evento')
-                                ):
-                                    st.success(f"Correo enviado a {mail_value_input} con el código de confirmación.")
-                                    
-                                    # Save state for the code screen and for the PDF generation
-                                    st.session_state["registro_actualizado"] = True
-                                    st.session_state["codigo_generado"] = str(random_code)
-                                    st.session_state["mail_value_for_pdf"] = mail_value_input
-                                    st.session_state["analista_value_for_pdf"] = analista_value_input
-                                    st.session_state["selected_row"] = selected_row
-
-                                    st.rerun()
-                            except Exception as e:
-                                st.error(f"No se pudo enviar el correo: {e}")
+                    at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
+                    st.success("Registro de Airtable actualizado a 'Pendiente'.")
+                    
+                    if not mail_value_input or pd.isna(mail_value_input):
+                        st.error("No hay correo válido para enviar el código.")
                     else:
-                        # Si no se marca el nuevo checkbox, solo actualiza Airtable y se detiene.
-                        #del fields_to_update['Codigo_unico'] # Asegura que no se envíe un código si no se debe
-                        at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
-                        st.success("Registro de Airtable actualizado sin enviar correo.")
-                        conectar_a_airtable.clear()
-                        st.rerun()
-
+                        try:
+                            if envia_mail(
+                                mail_value_input, 
+                                selected_row.get('Piloto', ''), 
+                                str(random_code), 
+                                analista_value_input, 
+                                selected_row.get('ID-partido', 'sin_id'),
+                                selected_row.get('Fecha partido', 'sin fecha'),
+                                selected_row.get('Tipo', 'evento')
+                            ):
+                                st.success(f"Correo enviado a {mail_value_input} con el código de confirmación.")
+                                st.session_state["registro_actualizado"] = True
+                                st.session_state["codigo_generado"] = str(random_code)
+                                st.session_state["mail_value_for_pdf"] = mail_value_input
+                                st.session_state["analista_value_for_pdf"] = analista_value_input
+                                st.session_state["selected_row"] = selected_row
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"No se pudo enviar el correo: {e}")
                 else:
                     st.error("No se pudo obtener el ID del registro.")
+
+            elif verificado:
+                # Nuevo flujo para generar PDF sin código y subirlo
+                at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
+                record_id = selected_row.get('Rec')
+                
+                if record_id:
+                    with st.spinner("Generando PDF y subiendo a Google Drive..."):
+                        # Generar el PDF con código nulo o un placeholder
+                        codigo_placeholder = "N/A"
+                        fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+                        
+                        pdf_content_without_hash = crear_pdf_con_template_en_memoria(
+                            selected_row,
+                            analista_value_input,
+                            codigo_placeholder,
+                            fecha_utc=fecha_utc,
+                            incluir_hash=False
+                        )
+                        pdf_hash = calcular_hash_bytes(pdf_content_without_hash)
+                        final_pdf_content = crear_pdf_con_template_en_memoria(
+                            selected_row,
+                            analista_value_input,
+                            codigo_placeholder,
+                            pdf_hash=pdf_hash,
+                            fecha_utc=fecha_utc,
+                            incluir_hash=True
+                        )
+
+                        file_name = f"reporte_verificado_{selected_row.get('ID-partido', 'sin_id')}.pdf"
+                        pdf_url = subir_a_drive_desde_bytes(final_pdf_content, file_name, DRIVE_FOLDER_ID)
+                    
+                    if pdf_url:
+                        fields_to_update = {
+                            'Analista(Form)': analista_value_input,
+                            'Mail(Form)': mail_value_input,
+                            'Verificado': 'Verificado',
+                            'PDF': [{'url': pdf_url}],
+                            'Hash_PDF': pdf_hash,
+                            'Codigo_unico': '------'
+                        }
+                        at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
+                        st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
+                        conectar_a_airtable.clear()
+                        st.rerun()
+                    else:
+                        st.error("No se pudo subir el PDF. Por favor, inténtalo de nuevo.")
+                else:
+                    st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
+            
+            else:
+                # Si ninguno de los checkboxes está marcado
+                st.warning("Debes marcar 'Enviar código' o 'Marcar como Verificado' para continuar.")
+                
     else:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
-
-
-
-
