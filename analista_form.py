@@ -515,7 +515,10 @@ if not tabla_entregas.empty:
             submitted = st.form_submit_button("Actualizar Registro")
 
         if submitted:
-            if not analista_value_input or not mail_value_input:
+            # Check if the "Marcar como Verificado" checkbox is selected first.
+            if not verificado:
+                st.warning("El checkbox 'Marcar como Verificado' debe estar marcado para poder actualizar el registro.")
+            elif not analista_value_input or not mail_value_input:
                 st.warning("El nombre del analista y el correo son obligatorios.")
             elif enviar_mail_y_verificar:
                 random_code = random.randint(100000, 999999)
@@ -557,7 +560,7 @@ if not tabla_entregas.empty:
                 else:
                     st.error("No se pudo obtener el ID del registro.")
 
-            elif verificado:
+            else:  # This now handles both cases where only 'verificado' is checked, or none are.
                 # Nuevo flujo para generar PDF sin código y subirlo
                 at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                 record_id = selected_row.get('Rec')
@@ -614,3 +617,4 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
