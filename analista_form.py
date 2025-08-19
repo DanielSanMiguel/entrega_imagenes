@@ -471,8 +471,10 @@ if st.session_state.get("registro_actualizado"):
                             at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                             st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
                             
-                            conectar_a_airtable.clear()
+                            st.cache_data.clear()
+                            st.cache_resource.clear()
                             st.rerun()
+                            conectar_a_airtable.clear()
                         else:
                             st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
                             
@@ -598,9 +600,12 @@ if not tabla_entregas.empty:
                         }
                         at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                         st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
-                        
-                        conectar_a_airtable.clear()
+
+                        st.cache_data.clear()
+                        st.cache_resource.clear()
                         st.rerun()
+                        conectar_a_airtable.clear()
+                        
                     else:
                         st.error("No se pudo subir el PDF. Por favor, inténtalo de nuevo.")
                 else:
@@ -613,6 +618,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
