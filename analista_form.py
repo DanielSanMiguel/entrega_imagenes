@@ -593,7 +593,7 @@ if not tabla_entregas.empty:
                         fields_to_update = {
                             'Analista(Form)': analista_value_input,
                             'Mail(Form)': mail_value_input,
-                            'Verificado': 'Verificado',
+                            'Verificado': 'Pendiente',
                             'PDF': [{'url': pdf_url}],
                             'Hash_PDF': pdf_hash,
                             'Codigo_unico': '------'
@@ -616,6 +616,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
