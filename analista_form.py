@@ -599,8 +599,7 @@ if not tabla_entregas.empty:
                         at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                         st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
                         
-                        st.cache_data.clear()
-                        st.cache_resource.clear()
+                        conectar_a_airtable.clear()
                         st.rerun()
                     else:
                         st.error("No se pudo subir el PDF. Por favor, inténtalo de nuevo.")
@@ -614,6 +613,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
