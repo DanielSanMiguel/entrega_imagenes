@@ -556,12 +556,22 @@ if not tabla_entregas.empty:
                 else:
                     st.error("No se pudo obtener el ID del registro.")
 
-            # Corrected condition to match the new radio button option
+            # Corrected logic for "Enviar enlace" to set Airtable status to 'Pendiente'
             elif opcion_seleccionada == "Enviar enlace":
                 at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                 record_id = selected_row.get('Rec')
                 
                 if record_id:
+                    # Update Airtable to 'Pendiente' before generating PDF
+                    fields_to_update_pending = {
+                        'Analista(Form)': analista_value_input,
+                        'Mail(Form)': mail_value_input,
+                        'Verificado': 'Pendiente', # Corrected status to 'Pendiente'
+                        'Codigo_unico': '------'
+                    }
+                    at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update_pending)
+                    st.success("Registro de Airtable actualizado a 'Pendiente'.")
+
                     with st.spinner("Generando PDF y subiendo a Google Drive..."):
                         codigo_placeholder = "N/A"
                         fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -587,13 +597,11 @@ if not tabla_entregas.empty:
                         pdf_url = subir_a_drive_desde_bytes(final_pdf_content, file_name, DRIVE_FOLDER_ID)
                     
                     if pdf_url:
+                        # Update Airtable to 'Verificado' after successful PDF upload
                         fields_to_update = {
-                            'Analista(Form)': analista_value_input,
-                            'Mail(Form)': mail_value_input,
                             'Verificado': 'Verificado',
                             'PDF': [{'url': pdf_url}],
                             'Hash_PDF': pdf_hash,
-                            'Codigo_unico': '------'
                         }
                         at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                         st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
@@ -613,3 +621,4 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
