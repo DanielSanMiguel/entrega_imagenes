@@ -466,6 +466,10 @@ if st.session_state.get("registro_actualizado"):
                             at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                             st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
                             
+                            # Limpiar el estado de la sesión para volver a la pantalla principal
+                            del st.session_state["registro_actualizado"]
+                            if "mail_value_for_pdf" in st.session_state: del st.session_state["mail_value_for_pdf"]
+                            if "analista_value_for_pdf" in st.session_state: del st.session_state["analista_value_for_pdf"]
                             st.cache_data.clear()
                             st.cache_resource.clear()
                             st.rerun()
@@ -476,11 +480,6 @@ if st.session_state.get("registro_actualizado"):
                 else:
                     st.error("No se pudo recuperar el registro o subir el PDF. Por favor, reinicia el proceso.")
                 
-            if "registro_actualizado" in st.session_state:
-                del st.session_state["registro_actualizado"]
-                if "mail_value_for_pdf" in st.session_state: del st.session_state["mail_value_for_pdf"]
-                if "analista_value_for_pdf" in st.session_state: del st.session_state["analista_value_for_pdf"]
-                st.rerun()
         else:
             st.error("Código incorrecto. Vuelve a intentarlo.")
     st.stop()
@@ -621,3 +620,4 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
