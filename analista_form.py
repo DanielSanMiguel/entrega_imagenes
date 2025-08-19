@@ -557,7 +557,7 @@ if not tabla_entregas.empty:
                                 st.rerun()
                         except Exception as e:
                             st.error(f"No se pudo enviar el correo: {e}")
-               else:
+                else:
                     st.error("No se pudo obtener el ID del registro.")
 
             else:  # This now handles both cases where only 'verificado' is checked, or none are.
@@ -617,6 +617,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
