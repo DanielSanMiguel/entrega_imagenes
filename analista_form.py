@@ -381,6 +381,12 @@ airtable = Airtable(AIRTABLE_BASE_ID, 'analista', AIRTABLE_API_KEY)
 
 
 # --- MAIN APPLICATION CODE (AUTHENTICATED USERS ONLY) ---
+def is_valid_email(email):
+    """
+    Validates the format of an email address using a regular expression.
+    """
+    regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(regex, email) is not None
 
 @st.cache_data(ttl=600)
 def conectar_a_airtable():
@@ -515,6 +521,8 @@ if not tabla_entregas.empty:
         if submitted:
             if not analista_value_input or not mail_value_input:
                 st.warning("El nombre del analista y el correo son obligatorios.")
+            elif not is_valid_email(mail_value_input):
+                st.warning("Por favor, introduce una dirección de correo electrónico válida.")
             elif opcion_seleccionada == "Enviar código":
                 random_code = random.randint(100000, 999999)
                 at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
@@ -620,4 +628,3 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
-
