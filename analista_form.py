@@ -324,18 +324,13 @@ def envia_mail(mail_value, nombre_completo_piloto, codigo, nombre_analista, part
             <p>Hola <b>{nombre_analista}</b>,</p>
             <p>El piloto <b>{nombre_completo_piloto}</b> ha iniciado la entrega física de la tarjeta SD con el material del **{tipo_evento_str}** <b>{partido_id}</b>, jugado el <b>{fecha_partido}</b>.</p>
             <p>Para completar este protocolo de seguridad y asegurar la cadena de custodia del material, por favor, facilita el siguiente código único al piloto cuando recibas la tarjeta:</p>
-
             <h2 style="text-align: center; color: #007bff; border: 2px solid #007bff; padding: 10px; font-family: monospace;">{codigo}</h2>
-
             <hr style="border: 0; border-top: 1px solid #ccc; margin: 30px 0;">
-
             <h4>Declaración de No Repudio y Validez Legal</h4>
             <p>Al facilitar este código al piloto, usted está confirmando la recepción y aceptación de la custodia de la tarjeta SD. Esta acción genera un registro digital con fecha y hora, que certifica la entrega del material.</p>
             <p>Esta confirmación tiene carácter de <b>firma electrónica simple</b> y garantiza la integridad de la transacción, impidiendo que cualquiera de las partes pueda repudiar la entrega posteriormente. Este registro se almacena de forma segura en nuestra base de datos para futuras auditorías.</p>
             <p>Si tienes alguna pregunta o incidencia, por favor, contacta con nuestro departamento legal en <a href="mailto:legal@fly-fut.com">legal@fly-fut.com</a>.</p>
-
             <p>Gracias por tu colaboración.</p>
-
             <p>Atentamente,<br>
             El equipo de Fly-Fut</p>
         </body>
@@ -474,7 +469,7 @@ if st.session_state.get("registro_actualizado"):
                             st.cache_data.clear()
                             st.cache_resource.clear()
                             st.rerun()
-                            conectar_a_airtable.clear()
+                            
                         else:
                             st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
                             
@@ -593,19 +588,17 @@ if not tabla_entregas.empty:
                         fields_to_update = {
                             'Analista(Form)': analista_value_input,
                             'Mail(Form)': mail_value_input,
-                            'Verificado': 'Pendiente',
+                            'Verificado': 'Verificado',
                             'PDF': [{'url': pdf_url}],
                             'Hash_PDF': pdf_hash,
                             'Codigo_unico': '------'
                         }
                         at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                         st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
-
+                        
                         st.cache_data.clear()
                         st.cache_resource.clear()
                         st.rerun()
-                        conectar_a_airtable.clear()
-                        
                     else:
                         st.error("No se pudo subir el PDF. Por favor, inténtalo de nuevo.")
                 else:
@@ -618,16 +611,3 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
-
-
-
-
-
-
-
-
-
-
-
-
-
