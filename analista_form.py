@@ -572,7 +572,7 @@ if not tabla_entregas.empty:
                                 st.error(f"No se pudo enviar el correo: {e}")
                     else:
                         # Si no se marca el nuevo checkbox, solo actualiza Airtable y se detiene.
-                        del fields_to_update['Codigo_unico'] # Asegura que no se envíe un código si no se debe
+                        #del fields_to_update['Codigo_unico'] # Asegura que no se envíe un código si no se debe
                         at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                         st.success("Registro de Airtable actualizado sin enviar correo.")
                         conectar_a_airtable.clear()
@@ -584,4 +584,5 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
