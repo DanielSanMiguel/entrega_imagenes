@@ -561,23 +561,11 @@ if not tabla_entregas.empty:
                     st.error("No se pudo obtener el ID del registro.")
 
             elif verificado:
-                # Si el checkbox 'verificado' está marcado solo
                 at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
                 record_id = selected_row.get('Rec')
                 
                 if record_id:
-                    # Update Airtable to 'Pendiente' before starting the process
-                    fields_to_update_pending = {
-                        'Analista(Form)': analista_value_input,
-                        'Mail(Form)': mail_value_input,
-                        'Verificado': 'Pendiente', # Changed to Pending
-                        'Codigo_unico': '------'
-                    }
-                    at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update_pending)
-                    st.info("Registro de Airtable actualizado a 'Pendiente'. Generando PDF...")
-
                     with st.spinner("Generando PDF y subiendo a Google Drive..."):
-                        # Generar el PDF con código nulo o un placeholder
                         codigo_placeholder = "N/A"
                         fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
                         
@@ -602,18 +590,19 @@ if not tabla_entregas.empty:
                         pdf_url = subir_a_drive_desde_bytes(final_pdf_content, file_name, DRIVE_FOLDER_ID)
                     
                     if pdf_url:
-                        # Update Airtable to 'Verificado' after successful PDF upload
-                        fields_to_update_complete = {
+                        fields_to_update = {
+                            'Analista(Form)': analista_value_input,
+                            'Mail(Form)': mail_value_input,
                             'Verificado': 'Verificado',
                             'PDF': [{'url': pdf_url}],
                             'Hash_PDF': pdf_hash,
+                            'Codigo_unico': '------'
                         }
-                        at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update_complete)
+                        at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                         st.success("Registro de Airtable actualizado a 'Verificado' y el PDF subido.")
-                    
+                        
                         st.cache_data.clear()
                         st.cache_resource.clear()
-                        conectar_a_airtable.clear()
                         st.rerun()
                     else:
                         st.error("No se pudo subir el PDF. Por favor, inténtalo de nuevo.")
@@ -621,13 +610,13 @@ if not tabla_entregas.empty:
                     st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
             
             else:
-                # Si ninguno de los checkboxes está marcado
                 st.warning("Debes marcar 'Enviar código' o 'Marcar como Verificado' para continuar.")
                 
     else:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
