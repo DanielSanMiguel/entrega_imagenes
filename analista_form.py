@@ -527,7 +527,7 @@ if not tabla_entregas.empty:
                     if enviar_mail_y_verificar:
                         new_verificado_status = 'Pendiente'
                     elif verificado:
-                        new_verificado_status = 'Verificado' # Esto es para el caso en el que no se envie mail, y se marque como verificado
+                        new_verificado_status = 'Pendiente' # Esto es para el caso en el que no se envie mail, y se marque como verificado
                     else:
                         new_verificado_status = '' # O el valor por defecto que desees
                     
@@ -584,5 +584,6 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
