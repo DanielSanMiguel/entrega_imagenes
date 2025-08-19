@@ -393,6 +393,11 @@ def conectar_a_airtable():
     result_at_Table1 = at_Table1.get('Confirmaciones_de_Entrega', view='Grid view')
     airtable_rows = [r['fields'] for r in result_at_Table1['records']]
     df = pd.DataFrame(airtable_rows)
+
+    # Verifica si la columna 'Codigo_unico' existe y la crea si no es así
+    if 'Codigo_unico' not in df.columns:
+        df['Codigo_unico'] = '------'
+    
     return df
 
 tabla_entregas = conectar_a_airtable()
@@ -579,3 +584,4 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
