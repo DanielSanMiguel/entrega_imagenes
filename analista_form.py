@@ -177,7 +177,7 @@ def crear_pdf_con_template_en_memoria(selected_row, analista_value, codigo_unico
     """
     Generates a report PDF in memory (BytesIO) using an HTML template and Jinja2.
     """
-    logo_path = "./img/logoFLY-FUT.png"
+    logo_path = "./img/LogoFLY-FUT.png"
     base64_logo = image_to_base64(logo_path)
     
     html_template_string = """
@@ -625,6 +625,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
