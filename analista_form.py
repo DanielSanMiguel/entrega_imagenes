@@ -26,7 +26,7 @@ from email import encoders
 import mimetypes
 from io import BytesIO
 import random
-
+import uuid
 # Importaciones para la mejora del PDF
 from jinja2 import Template
 from weasyprint import HTML, CSS
@@ -433,11 +433,14 @@ if not tabla_entregas.empty:
             
             if record_id:
                 # Update Airtable to 'Pendiente' before generating PDF
+                # 1. Generar un token único
+                token = str(uuid.uuid4())
+                # 2. Actualizar Airtable con el nuevo token y el estado "Pendiente"
                 fields_to_update_pending = {
                     'Analista(Form)': analista_value_input,
                     'Mail(Form)': mail_value_input,
                     'Verificado': 'Pendiente', 
-                    'Codigo_unico': '------'
+                    'Codigo_unico': token
                 }
                 at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update_pending)
                 st.success("Registro de Airtable actualizado a 'Pendiente'.")
