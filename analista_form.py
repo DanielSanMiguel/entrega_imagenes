@@ -228,8 +228,7 @@ def crear_pdf_con_template_en_memoria(selected_row, analista_value, codigo_unico
         </div>
         <hr>
         <div class="legal-annex">
-            <p>La introducción del código único proporcionado por este sistema y la confirmación de su
-            recepción constituyen una aceptación expresa de la entrega física del material
+            <p>La confirmación de su recepción constituyen una aceptación expresa de la entrega física del material
             identificado en este documento, así como la asunción de su custodia.</p>
             <p>Esta confirmación constituye una firma electrónica simple y queda asociada a la identidad
             del receptor, el código único, la fecha y hora de confirmación y la descripción del material
@@ -622,6 +621,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
