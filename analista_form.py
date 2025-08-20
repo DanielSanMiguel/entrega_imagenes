@@ -475,6 +475,7 @@ if not tabla_entregas.empty:
                         'Verificado': 'Pendiente',
                         'PDF': [{'url': pdf_url}],
                         'Hash_PDF': pdf_hash,
+                        'Codigo_unico': token
                     }
                     at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
                     st.success("Registro de Airtable actualizado a 'Pendiente' y el PDF subido.")
