@@ -194,7 +194,7 @@ def crear_pdf_con_template_en_memoria(selected_row, analista_value, codigo_unico
             .field-row { margin-bottom: 10px; }
             .field-name { font-weight: bold; color: #555; }
             .field-value { margin-left: 10px; }
-            .logo { width: 787px; margin-bottom: 20px; }
+            .logo { width: 300px; margin-bottom: 20px; }
             .legal-annex { margin-top: 50px; font-size: 11px; color: #666; }
             .legal-annex h4 { font-size: 12px; text-align: center; color: #333; }
             .hash-section { margin-top: 15px; font-size: 10px; word-break: break-all; }
@@ -625,6 +625,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
