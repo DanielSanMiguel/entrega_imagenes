@@ -177,7 +177,7 @@ def crear_pdf_con_template_en_memoria(selected_row, analista_value, codigo_unico
     """
     Generates a report PDF in memory (BytesIO) using an HTML template and Jinja2.
     """
-    logo_path = "./img/logo.png"
+    logo_path = "./img/logoFLY-FUT.png"
     base64_logo = image_to_base64(logo_path)
     
     html_template_string = """
@@ -189,12 +189,12 @@ def crear_pdf_con_template_en_memoria(selected_row, analista_value, codigo_unico
         <style>
             body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
             .header { text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 30px; }
-            .header h1 { color: #007bff; }
+            .header h1 { color: #333; }
             .content { line-height: 1.6; }
             .field-row { margin-bottom: 10px; }
             .field-name { font-weight: bold; color: #555; }
             .field-value { margin-left: 10px; }
-            .logo { width: 150px; margin-bottom: 20px; }
+            .logo { width: 197px; margin-bottom: 20px; }
             .legal-annex { margin-top: 50px; font-size: 11px; color: #666; }
             .legal-annex h4 { font-size: 12px; text-align: center; color: #333; }
             .hash-section { margin-top: 15px; font-size: 10px; word-break: break-all; }
@@ -205,7 +205,7 @@ def crear_pdf_con_template_en_memoria(selected_row, analista_value, codigo_unico
             {% if base64_logo %}
                 <img src="data:image/png;base64,{{ base64_logo }}" alt="Logo de la empresa" class="logo">
             {% endif %}
-            <h1>Reporte de Confirmación de Entrega</h1>
+            <h1>Confirmación de Entrega</h1>
         </div>
         <div class="content">
             <div class="field-row">
@@ -231,15 +231,12 @@ def crear_pdf_con_template_en_memoria(selected_row, analista_value, codigo_unico
         </div>
         <hr>
         <div class="legal-annex">
-            <h4>Anexo Legal — Declaración de Recepción y Custodia del Material</h4>
             <p>La introducción del código único proporcionado por este sistema y la confirmación de su
             recepción constituyen una aceptación expresa de la entrega física del material
             identificado en este documento, así como la asunción de su custodia.</p>
             <p>Esta confirmación constituye una firma electrónica simple y queda asociada a la identidad
             del receptor, el código único, la fecha y hora de confirmación y la descripción del material
             entregado. El registro se conserva para fines de auditoría y resolución de disputas.</p>
-            <p>Fly-Fut S.L. se reserva el derecho a presentar esta documentación como prueba ante
-            cualquier autoridad administrativa o judicial competente.</p>
             {% if incluir_hash %}
             <div class="field-row hash-section">
                 <span class="field-name">Fecha/hora UTC de generación:</span>
@@ -628,4 +625,5 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
