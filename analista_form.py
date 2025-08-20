@@ -188,13 +188,13 @@ def crear_pdf_con_template_en_memoria(selected_row, analista_value, codigo_unico
         <title>Reporte de Confirmación de Entrega</title>
         <style>
             body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
-            .header { text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 30px; }
+            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
             .header h1 { color: #333; }
             .content { line-height: 1.6; }
             .field-row { margin-bottom: 10px; }
             .field-name { font-weight: bold; color: #555; }
             .field-value { margin-left: 10px; }
-            .logo { width: 197px; margin-bottom: 20px; }
+            .logo { width: 787px; margin-bottom: 20px; }
             .legal-annex { margin-top: 50px; font-size: 11px; color: #666; }
             .legal-annex h4 { font-size: 12px; text-align: center; color: #333; }
             .hash-section { margin-top: 15px; font-size: 10px; word-break: break-all; }
@@ -625,5 +625,6 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
