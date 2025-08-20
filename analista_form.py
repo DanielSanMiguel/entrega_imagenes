@@ -34,7 +34,7 @@ from airtable import Airtable
 
 # --- App configuration ---
 st.set_page_config(page_title="Dashboard de Entregas", page_icon="✅", layout="wide")
-st.title("✅ Protocolo de confidencialidad en la entrega de imágenes")
+st.title("Protocolo de confidencialidad en la entrega de imágenes")
 
 # --- PWA Manifest Link ---
 st.markdown('<link rel="manifest" href="/manifest.json">', unsafe_allow_html=True)
@@ -621,6 +621,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
