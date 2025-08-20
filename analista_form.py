@@ -392,7 +392,7 @@ def conectar_a_airtable():
     # Verifica si la columna 'Codigo_unico' existe y la crea si no es así
     if 'Codigo_unico' not in df.columns:
         df['Codigo_unico'] = '------'
-    
+    df = df[(df['Verificado'] != 'Verificado')].copy()
     return df
 
 tabla_entregas = conectar_a_airtable()
