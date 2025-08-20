@@ -224,10 +224,7 @@ def crear_pdf_con_template_en_memoria(selected_row, analista_value, codigo_unico
                 <span class="field-name">Fecha Partido:</span>
                 <span class="field-value">{{ row['Fecha partido'] }}</span>
             </div>
-            <div class="field-row">
-                <span class="field-name">Código Único:</span>
-                <span class="field-value">{{ codigo }}</span>
-            </div>
+
         </div>
         <hr>
         <div class="legal-annex">
@@ -625,6 +622,7 @@ if not tabla_entregas.empty:
         st.warning("No se encontraron registros para el partido seleccionado.")
 else:
     st.warning("No se encontraron datos en la tabla.")
+
 
 
 
