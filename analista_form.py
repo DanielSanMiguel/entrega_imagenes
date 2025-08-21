@@ -422,71 +422,71 @@ if not tabla_entregas.empty:
             submitted = st.form_submit_button("Enviar enlace de confirmación")
 
         if submitted:
-            if not analista_value_input or not mail_value_input:
-                st.warning("El nombre del analista y el correo son obligatorios.")
-            elif not is_valid_email(mail_value_input):
-                st.warning("Por favor, introduce una dirección de correo electrónico válida.")
+    if not analista_value_input or not mail_value_input:
+        st.warning("El nombre del analista y el correo son obligatorios.")
+    elif not is_valid_email(mail_value_input):
+        st.warning("Por favor, introduce una dirección de correo electrónico válida.")
+    else:
+        # La lógica para enviar el enlace solo se ejecuta si la validación es exitosa
+        at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
+        record_id = selected_row.get('Rec')
+        
+        if record_id:
+            # Update Airtable to 'Pendiente' before generating PDF
+            # 1. Generar un token único
+            token = str(uuid.uuid4())
+            # 2. Actualizar Airtable con el nuevo token y el estado "Pendiente"
+            fields_to_update_pending = {
+                'Analista(Form)': analista_value_input,
+                'Mail(Form)': mail_value_input,
+                'Verificado': 'Pendiente', 
+                'Codigo_unico': token
+            }
+            at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update_pending)
+            st.success("Registro de Airtable actualizado a 'Pendiente'.")
+
+            with st.spinner("Generando PDF y subiendo a Google Drive..."):
+                codigo_placeholder = "N/A"
+                fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+                
+                pdf_content_without_hash = crear_pdf_con_template_en_memoria(
+                    selected_row,
+                    analista_value_input,
+                    codigo_placeholder,
+                    fecha_utc=fecha_utc,
+                    incluir_hash=False
+                )
+                pdf_hash = calcular_hash_bytes(pdf_content_without_hash)
+                final_pdf_content = crear_pdf_con_template_en_memoria(
+                    selected_row,
+                    analista_value_input,
+                    codigo_placeholder,
+                    pdf_hash=pdf_hash,
+                    fecha_utc=fecha_utc,
+                    incluir_hash=True
+                )
+
+                file_name = f"reporte_verificado_{selected_row.get('ID-partido', 'sin_id')}.pdf"
+                pdf_url = subir_a_drive_desde_bytes(final_pdf_content, file_name, DRIVE_FOLDER_ID)
             
-            # Lógica de "Enviar enlace"
-            at_Table1 = Airtable(st.secrets["AIRTABLE_BASE_ID"], st.secrets["AIRTABLE_API_KEY"])
-            record_id = selected_row.get('Rec')
-            
-            if record_id:
-                # Update Airtable to 'Pendiente' before generating PDF
-                # 1. Generar un token único
-                token = str(uuid.uuid4())
-                # 2. Actualizar Airtable con el nuevo token y el estado "Pendiente"
-                fields_to_update_pending = {
-                    'Analista(Form)': analista_value_input,
-                    'Mail(Form)': mail_value_input,
-                    'Verificado': 'Pendiente', 
+            if pdf_url:
+                # Update Airtable to 'Verificado' after successful PDF upload
+                fields_to_update = {
+                    'Verificado': 'Pendiente',
+                    'PDF': [{'url': pdf_url}],
+                    'Hash_PDF': pdf_hash,
                     'Codigo_unico': token
                 }
-                at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update_pending)
-                st.success("Registro de Airtable actualizado a 'Pendiente'.")
-
-                with st.spinner("Generando PDF y subiendo a Google Drive..."):
-                    codigo_placeholder = "N/A"
-                    fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-                    
-                    pdf_content_without_hash = crear_pdf_con_template_en_memoria(
-                        selected_row,
-                        analista_value_input,
-                        codigo_placeholder,
-                        fecha_utc=fecha_utc,
-                        incluir_hash=False
-                    )
-                    pdf_hash = calcular_hash_bytes(pdf_content_without_hash)
-                    final_pdf_content = crear_pdf_con_template_en_memoria(
-                        selected_row,
-                        analista_value_input,
-                        codigo_placeholder,
-                        pdf_hash=pdf_hash,
-                        fecha_utc=fecha_utc,
-                        incluir_hash=True
-                    )
-
-                    file_name = f"reporte_verificado_{selected_row.get('ID-partido', 'sin_id')}.pdf"
-                    pdf_url = subir_a_drive_desde_bytes(final_pdf_content, file_name, DRIVE_FOLDER_ID)
+                at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
+                st.success("Registro de Airtable actualizado a 'Pendiente' y el PDF subido.")
                 
-                if pdf_url:
-                    # Update Airtable to 'Verificado' after successful PDF upload
-                    fields_to_update = {
-                        'Verificado': 'Pendiente',
-                        'PDF': [{'url': pdf_url}],
-                        'Hash_PDF': pdf_hash,
-                        'Codigo_unico': token
-                    }
-                    at_Table1.update('Confirmaciones_de_Entrega', record_id, fields_to_update)
-                    st.success("Registro de Airtable actualizado a 'Pendiente' y el PDF subido.")
-                    
-                    st.cache_data.clear()
-                    st.cache_resource.clear()
-                    st.rerun()
-                else:
-                    st.error("No se pudo subir el PDF. Por favor, inténtalo de nuevo.")
+                st.cache_data.clear()
+                st.cache_resource.clear()
+                st.rerun()
             else:
-                st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
+                st.error("No se pudo subir el PDF. Por favor, inténtalo de nuevo.")
+        else:
+            st.error("No se pudo obtener el ID del registro para actualizar Airtable.")
             
     else:
         st.warning("No se encontraron registros para el partido seleccionado.")
