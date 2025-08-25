@@ -155,7 +155,7 @@ def limpiar_caracteres(texto):
     """
     Elimina comillas (simples y dobles) y corchetes ([], (), {}) de una cadena de texto.
     """
-    caracteres_a_eliminar = "[\"\'\[\]\(\)\{\}]"
+    caracteres_a_eliminar = r"[\"\'\[\]\(\)\{\}]"
     return re.sub(caracteres_a_eliminar, "", texto)
 
 # --- Función auxiliar para convertir imagen a Base64 ---
