@@ -447,7 +447,7 @@ if not tabla_entregas.empty:
         
                     with st.spinner("Generando PDF y subiendo a Google Drive..."):
                         codigo_placeholder = "N/A"
-                        fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+                        fecha_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
                         
                         pdf_content_without_hash = crear_pdf_con_template_en_memoria(
                             selected_row,
